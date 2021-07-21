@@ -1,0 +1,9 @@
+name: Quest Map
+author: ascclemens
+description: |-
+  Explore quests and their rewards.
+  - Search for quest names or their rewards, including instances,
+    beast tribes, minions, etc.
+  - See an interactive map of quest requirements and unlocks.
+  - Open a quest info window even for quests you haven't completed.
+  - Open quest starting locations on the map or open quests in the journal.
