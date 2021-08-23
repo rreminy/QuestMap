@@ -1,5 +1,6 @@
 name: Quest Map
 author: ascclemens
+punchline: Explore quests and their rewards.
 description: |-
   Explore quests and their rewards.
   - Search for quest names or their rewards, including instances,
@@ -7,3 +8,7 @@ description: |-
   - See an interactive map of quest requirements and unlocks.
   - Open a quest info window even for quests you haven't completed.
   - Open quest starting locations on the map or open quests in the journal.
+
+  Icons: treasure map by Anthony Ledoux from the Noun Project and
+  locked book by Anthony Ledoux from the Noun Project
+repo_url: https://git.sr.ht/~jkcclemens/QuestMap

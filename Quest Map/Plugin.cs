@@ -1,21 +1,44 @@
-﻿using System;
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
+using Dalamud.Data;
+using Dalamud.Game.ClientState;
+using Dalamud.Game.Command;
+using Dalamud.Game.Gui;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.IoC;
 using Dalamud.Plugin;
-using Microsoft.Msagl.Core.Layout;
 using XivCommon;
 
 namespace QuestMap {
-    internal class Plugin : IDisposable {
-        internal DalamudPluginInterface Interface { get; }
+    // ReSharper disable once ClassNeverInstantiated.Global
+    internal class Plugin : IDalamudPlugin {
+        public string Name => "Quest Map";
+
+        [PluginService]
+        internal DalamudPluginInterface Interface { get; init; } = null!;
+
+        [PluginService]
+        internal ClientState ClientState { get; init; } = null!;
+
+        [PluginService]
+        internal CommandManager CommandManager { get; init; } = null!;
+
+        [PluginService]
+        internal DataManager DataManager { get; init; } = null!;
+
+        [PluginService]
+        internal GameGui GameGui { get; init; } = null!;
+
+        [PluginService]
+        internal SeStringManager SeStringManager { get; init; } = null!;
+
         internal XivCommonBase Common { get; }
         internal Configuration Config { get; }
         internal Quests Quests { get; }
         internal PluginUi Ui { get; }
         private Commands Commands { get; }
 
-        internal Plugin(DalamudPluginInterface pluginInterface) {
-            this.Interface = pluginInterface;
-            this.Common = new XivCommonBase(pluginInterface);
+        public Plugin() {
+            this.Common = new XivCommonBase();
             this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
 
             var graphChannel = Channel.CreateUnbounded<GraphInfo>();

@@ -8,13 +8,13 @@ namespace QuestMap {
         internal Commands(Plugin plugin) {
             this.Plugin = plugin;
 
-            this.Plugin.Interface.CommandManager.AddHandler("/quests", new CommandInfo(this.OnCommand) {
+            this.Plugin.CommandManager.AddHandler("/quests", new CommandInfo(this.OnCommand) {
                 HelpMessage = "Show Quest Map",
             });
         }
 
         public void Dispose() {
-            this.Plugin.Interface.CommandManager.RemoveHandler("/quests");
+            this.Plugin.CommandManager.RemoveHandler("/quests");
         }
 
         private void OnCommand(string command, string args) {

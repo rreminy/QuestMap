@@ -17,8 +17,8 @@ namespace QuestMap {
         public override void PopulateData(RowParser parser, GameData gameData, Language language) {
             base.PopulateData(parser, gameData, language);
 
-            this.Id = parser.ReadColumn<string>(0);
-            this.Text = parser.ReadColumn<SeString>(1);
+            this.Id = parser.ReadColumn<string>(0)!;
+            this.Text = parser.ReadColumn<SeString>(1)!;
         }
     }
 }
