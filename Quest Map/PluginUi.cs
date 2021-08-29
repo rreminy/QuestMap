@@ -895,7 +895,7 @@ namespace QuestMap {
         private static readonly byte[] NewLinePayload = { 0x02, 0x10, 0x01, 0x03 };
 
         private SeString Convert(Lumina.Text.SeString lumina) {
-            var se = this.Plugin.SeStringManager.Parse(lumina.RawData.ToArray());
+            var se = (SeString) lumina;
             for (var i = 0; i < se.Payloads.Count; i++) {
                 switch (se.Payloads[i].Type) {
                     case PayloadType.Unknown:

@@ -3,7 +3,6 @@ using Dalamud.Data;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
-using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using XivCommon;
@@ -27,9 +26,6 @@ namespace QuestMap {
 
         [PluginService]
         internal GameGui GameGui { get; init; } = null!;
-
-        [PluginService]
-        internal SeStringManager SeStringManager { get; init; } = null!;
 
         internal XivCommonBase Common { get; }
         internal Configuration Config { get; }
