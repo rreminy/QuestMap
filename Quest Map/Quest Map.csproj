@@ -42,7 +42,7 @@
         <PackageReference Include="DalamudLinter" Version="1.0.3"/>
         <PackageReference Include="DalamudPackager" Version="2.1.2"/>
         <PackageReference Include="System.Threading.Channels" Version="5.0.0"/>
-        <PackageReference Include="XivCommon" Version="3.0.1"/>
+        <PackageReference Include="XivCommon" Version="3.0.2"/>
     </ItemGroup>
 
     <ItemGroup>
