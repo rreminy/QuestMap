@@ -225,6 +225,11 @@ namespace QuestMap {
                             anyChanged = true;
                         }
 
+                        if (ImGui.MenuItem("Show redundant arrows", null, ref this.Plugin.Config.ShowRedundantArrows)) {
+                            this._relayout = true;
+                            anyChanged = true;
+                        }
+
                         ImGui.EndMenu();
                     }
 

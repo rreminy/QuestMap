@@ -149,7 +149,20 @@ namespace QuestMap {
                 g.Nodes.Add(graphNode);
                 msaglNodes[node.Id] = graphNode;
 
-                foreach (var parent in node.Parents) {
+                IEnumerable<Node<Quest>> parents;
+                if (this.Plugin.Config.ShowRedundantArrows) {
+                    parents = node.Parents;
+                } else {
+                    // only add if no *other* parent also shares
+                    parents = node.Parents
+                        .Where(q => {
+                            return !node.Parents
+                                .Where(other => other != q)
+                                .Any(other => other.Parents.Contains(q));
+                        });
+                }
+
+                foreach (var parent in parents) {
                     links.Add((parent.Id, node.Id));
                 }
             }

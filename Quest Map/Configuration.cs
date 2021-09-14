@@ -10,6 +10,7 @@ namespace QuestMap {
         public bool ShowSeasonal;
         public bool ShowArrowheads;
         public bool CondenseMsq;
+        public bool ShowRedundantArrows;
 
         public Visibility EmoteVis;
         public Visibility ItemVis;
