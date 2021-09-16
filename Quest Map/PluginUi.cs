@@ -569,7 +569,11 @@ namespace QuestMap {
                     } else {
                         ImGui.TextUnformatted(this.Convert(instance.Name).ToString());
                     }
+
+                    ImGui.SameLine();
                 }
+
+                ImGui.Dummy(Vector2.Zero);
 
                 ImGui.Separator();
             }
