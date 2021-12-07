@@ -535,8 +535,8 @@ namespace QuestMap {
             if (quest.ItemRewardType is 0 or 1 or 3 or 5) {
                 DrawItemRewards(
                     "Rewards",
-                    quest.ItemReward0
-                        .Zip(quest.ItemCountReward0, (id, qty) => (id, qty))
+                    quest.ItemReward
+                        .Zip(quest.ItemCountReward, (id, qty) => (id, qty))
                         .Where(entry => entry.id != 0)
                         .Select(entry => (item: this.Plugin.DataManager.GetExcelSheet<Item>()!.GetRow(entry.id), entry.qty))
                         .Where(entry => entry.item != null)
@@ -546,8 +546,8 @@ namespace QuestMap {
 
                 DrawItemRewards(
                     "Optional rewards",
-                    quest.ItemReward1
-                        .Zip(quest.ItemCountReward1, (row, qty) => (row, qty))
+                    quest.OptionalItemReward
+                        .Zip(quest.OptionalItemCountReward, (row, qty) => (row, qty))
                         .Where(entry => entry.row.Row != 0)
                         .Select(entry => (item: entry.row.Value, entry.qty))
                         .Where(entry => entry.item != null)

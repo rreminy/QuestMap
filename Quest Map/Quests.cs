@@ -52,7 +52,7 @@ namespace QuestMap {
                     emoteRewards[quest.RowId] = quest.EmoteReward.Value!;
                 }
 
-                foreach (var row in quest.ItemReward0.Where(item => item != 0)) {
+                foreach (var row in quest.ItemReward.Where(item => item != 0)) {
                     var item = this.Plugin.DataManager.GetExcelSheet<Item>()!.GetRow(row);
                     if (item == null) {
                         continue;
@@ -69,7 +69,7 @@ namespace QuestMap {
                     rewards.Add(item);
                 }
 
-                foreach (var row in quest.ItemReward1.Where(item => item.Row != 0)) {
+                foreach (var row in quest.OptionalItemReward.Where(item => item.Row != 0)) {
                     var item = row.Value;
 
                     List<Item> rewards;
@@ -248,6 +248,7 @@ namespace QuestMap {
                 69552 => "Futures Rewritten (5.4)",
                 69599 => "Death Unto Dawn - Part 1 (5.5)",
                 69602 => "Death Unto Dawn - Part 2 (5.55)",
+                70000 => "Endwalker (6.0)",
                 _ => null,
             };
 

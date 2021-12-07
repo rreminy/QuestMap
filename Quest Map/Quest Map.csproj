@@ -40,9 +40,9 @@
     <ItemGroup>
         <PackageReference Include="AutomaticGraphLayout" Version="1.1.12"/>
         <PackageReference Include="DalamudLinter" Version="1.0.3"/>
-        <PackageReference Include="DalamudPackager" Version="2.1.2"/>
-        <PackageReference Include="System.Threading.Channels" Version="5.0.0"/>
-        <PackageReference Include="XivCommon" Version="3.0.2"/>
+        <PackageReference Include="DalamudPackager" Version="2.1.5"/>
+        <PackageReference Include="System.Threading.Channels" Version="6.0.0"/>
+        <PackageReference Include="XivCommon" Version="4.0.0-alpha.1"/>
     </ItemGroup>
 
     <ItemGroup>
