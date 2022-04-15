@@ -3,7 +3,7 @@
     <PropertyGroup>
         <TargetFramework>net5-windows</TargetFramework>
         <RootNamespace>QuestMap</RootNamespace>
-        <Version>1.4.1</Version>
+        <Version>1.4.2</Version>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -40,9 +40,9 @@
     <ItemGroup>
         <PackageReference Include="AutomaticGraphLayout" Version="1.1.12"/>
         <PackageReference Include="DalamudLinter" Version="1.0.3"/>
-        <PackageReference Include="DalamudPackager" Version="2.1.5"/>
+        <PackageReference Include="DalamudPackager" Version="2.1.6"/>
         <PackageReference Include="System.Threading.Channels" Version="6.0.0"/>
-        <PackageReference Include="XivCommon" Version="4.0.0-alpha.1"/>
+        <PackageReference Include="XivCommon" Version="5.0.1-alpha.1"/>
     </ItemGroup>
 
     <ItemGroup>
