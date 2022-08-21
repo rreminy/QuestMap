@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Quest Map", "Quest Map\Quest Map.csproj", "{63ACA302-ADBE-4353-A722-D38531C8A34D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuestMap", "QuestMap\QuestMap.csproj", "{63ACA302-ADBE-4353-A722-D38531C8A34D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

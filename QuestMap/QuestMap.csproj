@@ -1,52 +1,57 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net5-windows</TargetFramework>
+        <TargetFramework>net6-windows</TargetFramework>
         <RootNamespace>QuestMap</RootNamespace>
         <Version>1.4.2</Version>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
         <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-        <IgnoredLints>
-            D0008
-        </IgnoredLints>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev</DalamudLibPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))'">
+        <DalamudLibPath>$(DALAMUD_HOME)</DalamudLibPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(IsCI)' == 'true'">
+        <DalamudLibPath>$(HOME)/dalamud</DalamudLibPath>
     </PropertyGroup>
 
     <ItemGroup>
         <Reference Include="Dalamud">
-            <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\Dalamud.dll</HintPath>
+            <HintPath>$(DalamudLibPath)\Dalamud.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="ImGui.NET">
-            <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\ImGui.NET.dll</HintPath>
+            <HintPath>$(DalamudLibPath)\ImGui.NET.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="ImGuiScene">
-            <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\ImGuiScene.dll</HintPath>
+            <HintPath>$(DalamudLibPath)\ImGuiScene.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="Lumina">
-            <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\Lumina.dll</HintPath>
+            <HintPath>$(DalamudLibPath)\Lumina.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="Lumina.Excel">
-            <HintPath>$(AppData)\XIVLauncher\addon\Hooks\dev\Lumina.Excel.dll</HintPath>
+            <HintPath>$(DalamudLibPath)\Lumina.Excel.dll</HintPath>
             <Private>False</Private>
         </Reference>
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="AutomaticGraphLayout" Version="1.1.12"/>
-        <PackageReference Include="DalamudLinter" Version="1.0.3"/>
-        <PackageReference Include="DalamudPackager" Version="2.1.6"/>
+        <PackageReference Include="DalamudPackager" Version="2.1.7"/>
         <PackageReference Include="System.Threading.Channels" Version="6.0.0"/>
-        <PackageReference Include="XivCommon" Version="5.0.1-alpha.1"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Content Include="..\icon.png" Link="images/icon.png" CopyToOutputDirectory="PreserveNewest" Visible="false"/>
+        <PackageReference Include="XivCommon" Version="6.0.0"/>
     </ItemGroup>
 
 </Project>
