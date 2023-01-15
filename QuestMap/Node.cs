@@ -151,16 +151,10 @@ namespace QuestMap {
         }
 
         internal static IEnumerable<Quest> PreviousQuests(this Quest quest) {
-            if (quest.PreviousQuest0.Row != 0) {
-                yield return quest.PreviousQuest0.Value!;
-            }
-
-            if (quest.PreviousQuest1.Row != 0) {
-                yield return quest.PreviousQuest1.Value!;
-            }
-
-            if (quest.PreviousQuest2.Row != 0) {
-                yield return quest.PreviousQuest2.Value!;
+            foreach (var previous in quest.PreviousQuest) {
+                if (previous != null && previous.Row != 0) {
+                    yield return previous.Value!;
+                }
             }
         }
     }

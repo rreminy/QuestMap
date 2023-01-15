@@ -220,8 +220,8 @@ namespace QuestMap {
             }
 
             var name = quest.RowId switch {
-                66060 => "A Realm Reborn (2.0)",
-                69414 => "A Realm Awoken (2.1)",
+                70058 => "A Realm Reborn (2.0)",
+                66729 => "A Realm Awoken (2.1)",
                 66899 => "Through the Maelstrom (2.2)",
                 66996 => "Defenders of Eorzea (2.3)",
                 65625 => "Dreams of Ice (2.4)",
@@ -249,6 +249,9 @@ namespace QuestMap {
                 69599 => "Death Unto Dawn - Part 1 (5.5)",
                 69602 => "Death Unto Dawn - Part 2 (5.55)",
                 70000 => "Endwalker (6.0)",
+                70062 => "Newfound Adventure (6.1)",
+                70136 => "Buried Memory (6.2)",
+                70214 => "Gods Revel, Lands Tremble (6.3)",
                 _ => null,
             };
 
