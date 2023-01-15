@@ -3,7 +3,7 @@
     <PropertyGroup>
         <TargetFramework>net7-windows</TargetFramework>
         <RootNamespace>QuestMap</RootNamespace>
-        <Version>1.4.4</Version>
+        <Version>1.4.5</Version>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
