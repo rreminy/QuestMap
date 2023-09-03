@@ -403,7 +403,7 @@ namespace QuestMap {
                     return wrap;
                 }
 
-                wrap = this.Plugin.DataManager.GetImGuiTextureIcon(this.Plugin.ClientState.ClientLanguage, id);
+                wrap = this.Plugin.TextureProvider.GetIcon(id);
                 if (wrap != null) {
                     this.Icons[id] = wrap;
                 }

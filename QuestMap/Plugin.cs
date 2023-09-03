@@ -5,6 +5,7 @@ using Dalamud.Game.Command;
 using Dalamud.Game.Gui;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using XivCommon;
 
 namespace QuestMap {
@@ -26,6 +27,9 @@ namespace QuestMap {
 
         [PluginService]
         internal GameGui GameGui { get; init; } = null!;
+
+        [PluginService]
+        internal ITextureProvider TextureProvider { get; init; } = null!;
 
         internal XivCommonBase Common { get; }
         internal Configuration Config { get; }
