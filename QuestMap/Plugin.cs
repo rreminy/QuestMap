@@ -1,8 +1,4 @@
 ﻿using System.Threading.Channels;
-using Dalamud.Data;
-using Dalamud.Game.ClientState;
-using Dalamud.Game.Command;
-using Dalamud.Game.Gui;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -11,22 +7,22 @@ using XivCommon;
 namespace QuestMap {
     // ReSharper disable once ClassNeverInstantiated.Global
     internal class Plugin : IDalamudPlugin {
-        public string Name => "Quest Map";
+        internal static string Name => "Quest Map";
 
         [PluginService]
         internal DalamudPluginInterface Interface { get; init; } = null!;
 
         [PluginService]
-        internal ClientState ClientState { get; init; } = null!;
+        internal IClientState ClientState { get; init; } = null!;
 
         [PluginService]
-        internal CommandManager CommandManager { get; init; } = null!;
+        internal ICommandManager CommandManager { get; init; } = null!;
 
         [PluginService]
-        internal DataManager DataManager { get; init; } = null!;
+        internal IDataManager DataManager { get; init; } = null!;
 
         [PluginService]
-        internal GameGui GameGui { get; init; } = null!;
+        internal IGameGui GameGui { get; init; } = null!;
 
         [PluginService]
         internal ITextureProvider TextureProvider { get; init; } = null!;

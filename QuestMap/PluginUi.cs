@@ -9,8 +9,8 @@ using Dalamud;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
+using Dalamud.Interface.Internal;
 using ImGuiNET;
-using ImGuiScene;
 using Lumina.Data;
 using Lumina.Excel;
 using Lumina.Excel.GeneratedSheets;
@@ -41,7 +41,7 @@ namespace QuestMap {
         private ChannelReader<GraphInfo> GraphChannel { get; }
         private CancellationTokenSource? CancellationTokenSource { get; set; }
         private HashSet<uint> InfoWindows { get; } = new();
-        private Dictionary<uint, TextureWrap> Icons { get; } = new();
+        private Dictionary<uint, IDalamudTextureWrap> Icons { get; } = new();
         private List<(Quest, bool, string)> FilteredQuests { get; } = new();
 
         internal bool Show;
@@ -198,7 +198,7 @@ namespace QuestMap {
 
             ImGui.SetNextWindowSize(new Vector2(675, 600), ImGuiCond.FirstUseEver);
 
-            if (!ImGui.Begin(this.Plugin.Name, ref this.Show, ImGuiWindowFlags.MenuBar)) {
+            if (!ImGui.Begin(Plugin.Name, ref this.Show, ImGuiWindowFlags.MenuBar)) {
                 ImGui.End();
                 return;
             }
@@ -398,7 +398,7 @@ namespace QuestMap {
                 ImGui.PopFont();
             }
 
-            TextureWrap? GetIcon(uint id) {
+            IDalamudTextureWrap? GetIcon(uint id) {
                 if (this.Icons.TryGetValue(id, out var wrap)) {
                     return wrap;
                 }
