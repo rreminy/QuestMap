@@ -252,6 +252,8 @@ namespace QuestMap {
                 70062 => "Newfound Adventure (6.1)",
                 70136 => "Buried Memory (6.2)",
                 70214 => "Gods Revel, Lands Tremble (6.3)",
+                70279 => "The Dark Throne (6.4)",
+                70286 => "Growing Light (6.5)",
                 _ => null,
             };
 
