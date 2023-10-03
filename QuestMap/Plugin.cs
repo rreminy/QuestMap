@@ -34,7 +34,7 @@ namespace QuestMap {
         private Commands Commands { get; }
 
         public Plugin() {
-            this.Common = new XivCommonBase();
+            this.Common = new XivCommonBase(this.Interface);
             this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
 
             var graphChannel = Channel.CreateUnbounded<GraphInfo>();
