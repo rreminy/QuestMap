@@ -254,6 +254,7 @@ namespace QuestMap {
                 70214 => "Gods Revel, Lands Tremble (6.3)",
                 70279 => "The Dark Throne (6.4)",
                 70286 => "Growing Light (6.5)",
+                70289 => "The Coming Dawn (6.55)",
                 70495 => "Dawntrail (7.0)",
                 _ => null,
             };
