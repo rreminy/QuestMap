@@ -2,7 +2,6 @@
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using XivCommon;
 
 namespace QuestMap {
     // ReSharper disable once ClassNeverInstantiated.Global
@@ -10,7 +9,7 @@ namespace QuestMap {
         internal static string Name => "Quest Map";
 
         [PluginService]
-        internal DalamudPluginInterface Interface { get; init; } = null!;
+        internal IDalamudPluginInterface Interface { get; init; } = null!;
 
         [PluginService]
         internal IClientState ClientState { get; init; } = null!;
@@ -27,14 +26,12 @@ namespace QuestMap {
         [PluginService]
         internal ITextureProvider TextureProvider { get; init; } = null!;
 
-        internal XivCommonBase Common { get; }
         internal Configuration Config { get; }
         internal Quests Quests { get; }
         internal PluginUi Ui { get; }
         private Commands Commands { get; }
 
         public Plugin() {
-            this.Common = new XivCommonBase(this.Interface);
             this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
 
             var graphChannel = Channel.CreateUnbounded<GraphInfo>();
@@ -47,7 +44,6 @@ namespace QuestMap {
         public void Dispose() {
             this.Commands.Dispose();
             this.Ui.Dispose();
-            this.Common.Dispose();
         }
 
         internal void SaveConfig() {

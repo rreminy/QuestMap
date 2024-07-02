@@ -62,7 +62,7 @@ namespace QuestMap {
                     if (itemRewards.TryGetValue(quest.RowId, out var items)) {
                         rewards = items;
                     } else {
-                        rewards = new List<Item>();
+                        rewards = [];
                         itemRewards[quest.RowId] = rewards;
                     }
 
@@ -76,7 +76,7 @@ namespace QuestMap {
                     if (itemRewards.TryGetValue(quest.RowId, out var items)) {
                         rewards = items;
                     } else {
-                        rewards = new List<Item>();
+                        rewards = [];
                         itemRewards[quest.RowId] = rewards;
                     }
 
@@ -254,6 +254,7 @@ namespace QuestMap {
                 70214 => "Gods Revel, Lands Tremble (6.3)",
                 70279 => "The Dark Throne (6.4)",
                 70286 => "Growing Light (6.5)",
+                70495 => "Dawntrail (7.0)",
                 _ => null,
             };
 
@@ -272,7 +273,7 @@ namespace QuestMap {
 
         private HashSet<ContentFinderCondition> InstanceUnlocks(Quest quest, ICollection<ContentFinderCondition> others) {
             if (quest.IsRepeatable) {
-                return new HashSet<ContentFinderCondition>();
+                return [];
             }
 
             var unlocks = new HashSet<ContentFinderCondition>();

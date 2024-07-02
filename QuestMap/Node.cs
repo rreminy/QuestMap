@@ -8,7 +8,7 @@ namespace QuestMap {
         internal uint Id { get; }
         internal List<Node<T>> Parents { get; set; }
         internal T Value { get; set; }
-        internal List<Node<T>> Children { get; } = new();
+        internal List<Node<T>> Children { get; } = [];
 
         internal Node(List<Node<T>> parents, uint id, T value) {
             this.Id = id;
@@ -18,7 +18,7 @@ namespace QuestMap {
 
         private Node(uint id) {
             this.Id = id;
-            this.Parents = new List<Node<T>>();
+            this.Parents = [];
             this.Value = default!;
         }
 
@@ -58,7 +58,7 @@ namespace QuestMap {
                 var consolidated = consolidator(parent.Value);
                 parents.Push(consolidated == null
                     ? parent
-                    : new Node<T>(new List<Node<T>>(), parent.Id, consolidated) {
+                    : new Node<T>([], parent.Id, consolidated) {
                         Children = { this },
                     });
             }
@@ -70,7 +70,7 @@ namespace QuestMap {
                     var consolidated = consolidator(parent.Value);
                     parents.Push(consolidated == null
                         ? parent
-                        : new Node<T>(new List<Node<T>>(), parent.Id, consolidated) {
+                        : new Node<T>([], parent.Id, consolidated) {
                             Children = { next },
                         });
                 }
@@ -110,7 +110,7 @@ namespace QuestMap {
                 if (lookup.TryGetValue(item.Key, out var ourNode)) {
                     ourNode.Value = item.Value;
                 } else {
-                    ourNode = new Node<Quest>(new List<Node<Quest>>(), item.Key, item.Value);
+                    ourNode = new Node<Quest>([], item.Key, item.Value);
                     lookup[item.Key] = ourNode;
                     allNodes[item.Key] = ourNode;
                 }

@@ -5,11 +5,14 @@ using System.Numerics;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Channels;
-using Dalamud;
+using Dalamud.Game;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
-using Dalamud.Interface.Internal;
+using Dalamud.Interface.Textures;
+using Dalamud.Interface.Textures.TextureWraps;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
 using Lumina.Data;
 using Lumina.Excel;
@@ -40,9 +43,8 @@ namespace QuestMap {
         private Node? Centre { get; set; }
         private ChannelReader<GraphInfo> GraphChannel { get; }
         private CancellationTokenSource? CancellationTokenSource { get; set; }
-        private HashSet<uint> InfoWindows { get; } = new();
-        private Dictionary<uint, IDalamudTextureWrap> Icons { get; } = new();
-        private List<(Quest, bool, string)> FilteredQuests { get; } = new();
+        private HashSet<uint> InfoWindows { get; } = [];
+        private List<(Quest, bool, string)> FilteredQuests { get; } = [];
 
         internal bool Show;
 
@@ -67,17 +69,13 @@ namespace QuestMap {
         public void Dispose() {
             this.Plugin.Interface.UiBuilder.OpenConfigUi -= this.OpenConfig;
             this.Plugin.Interface.UiBuilder.Draw -= this.Draw;
-
-            foreach (var icon in this.Icons.Values) {
-                icon.Dispose();
-            }
         }
 
         private void OpenConfig() {
             this.Show = true;
         }
 
-        private void Refilter() {
+        private unsafe void Refilter() {
             this.FilteredQuests.Clear();
 
             var filterLower = this._filter.ToLowerInvariant();
@@ -91,7 +89,7 @@ namespace QuestMap {
                         return false;
                     }
 
-                    var completed = this.Plugin.Common.Functions.Journal.IsQuestCompleted(quest);
+                    var completed = QuestManager.IsQuestComplete(quest.RowId);
                     if (!this.Plugin.Config.ShowCompleted && completed) {
                         return false;
                     }
@@ -191,7 +189,7 @@ namespace QuestMap {
             this.DrawMainWindow();
         }
 
-        private void DrawMainWindow() {
+        private unsafe void DrawMainWindow() {
             if (!this.Show) {
                 return;
             }
@@ -289,13 +287,9 @@ namespace QuestMap {
                         var (quest, indent, drawItem) = this.FilteredQuests[row];
 
                         void DrawSelectable(string name, Quest quest) {
-                            var completed = this.Plugin.Common.Functions.Journal.IsQuestCompleted(quest);
+                            var completed = QuestManager.IsQuestComplete(quest.RowId);
                             if (completed) {
-                                Vector4 disabled;
-                                unsafe {
-                                    disabled = *ImGui.GetStyleColorVec4(ImGuiCol.TextDisabled);
-                                }
-
+                                var disabled = *ImGui.GetStyleColorVec4(ImGuiCol.TextDisabled);
                                 ImGui.PushStyleColor(ImGuiCol.Text, disabled);
                             }
 
@@ -385,7 +379,7 @@ namespace QuestMap {
                 return !open;
             }
 
-            var completed = this.Plugin.Common.Functions.Journal.IsQuestCompleted(quest);
+            var completed = QuestManager.IsQuestComplete(quest.RowId);
 
             ImGui.TextUnformatted($"Level: {quest.ClassJobLevel0}");
 
@@ -399,16 +393,7 @@ namespace QuestMap {
             }
 
             IDalamudTextureWrap? GetIcon(uint id) {
-                if (this.Icons.TryGetValue(id, out var wrap)) {
-                    return wrap;
-                }
-
-                wrap = this.Plugin.TextureProvider.GetIcon(id);
-                if (wrap != null) {
-                    this.Icons[id] = wrap;
-                }
-
-                return wrap;
+                return this.Plugin.TextureProvider.GetFromGameIcon(new GameIconLookup(id)).GetWrapOrDefault();
             }
 
             var textWrap = ImGui.GetFontSize() * 20f;
@@ -417,7 +402,7 @@ namespace QuestMap {
                 var header = GetIcon(quest.Icon);
                 if (header != null) {
                     textWrap = header.Width;
-                    ImGui.Image(header.ImGuiHandle, new Vector2(header.Width, header.Height));
+                    ImGui.Image(header.ImGuiHandle, new Vector2(header.Width / 2f, header.Height / 2f));
                 }
             }
 
@@ -452,8 +437,8 @@ namespace QuestMap {
 
                 var maxHeight = items
                     .Select(entry => GetIcon(entry.icon))
-                    .Where(image => image != null)
-                    .Max(image => image!.Height);
+                    .Select(image => image?.Height ?? 0)
+                    .Max(height => height / 2f);
 
                 var originalY = ImGui.GetCursorPosY();
                 foreach (var (name, icon, qty) in items) {
@@ -463,7 +448,7 @@ namespace QuestMap {
                             ImGui.SetCursorPosY(originalY + (maxHeight - image.Height) / 2f);
                         }
 
-                        ImGui.Image(image.ImGuiHandle, new Vector2(image.Width, image.Height));
+                        ImGui.Image(image.ImGuiHandle, new Vector2(image.Width / 2f, image.Height / 2f));
                         Util.Tooltip(name.ToString());
                     }
 
@@ -563,7 +548,7 @@ namespace QuestMap {
                     if (icon > 0) {
                         var image = GetIcon(icon);
                         if (image != null) {
-                            ImGui.Image(image.ImGuiHandle, new Vector2(image.Width, image.Height));
+                            ImGui.Image(image.ImGuiHandle, new Vector2(image.Width / 2f, image.Height / 2f));
                             Util.Tooltip(this.Convert(instance.Name).ToString());
                         }
                     } else {
@@ -583,7 +568,7 @@ namespace QuestMap {
 
                 var image = GetIcon(tribe.Icon);
                 if (image != null) {
-                    ImGui.Image(image.ImGuiHandle, new Vector2(image.Width, image.Height));
+                    ImGui.Image(image.ImGuiHandle, new Vector2(image.Width / 2f, image.Height / 2f));
                     Util.Tooltip(this.Convert(tribe.Name).ToString());
                 }
 
@@ -606,11 +591,11 @@ namespace QuestMap {
                 // ReSharper disable once ConstantConditionalAccessQualifier
                 .MakeGenericMethod(typeof(QuestData))?
                 // ReSharper disable once ConstantConditionalAccessQualifier
-                .Invoke(this.Plugin.DataManager.Excel, new object?[] {
+                .Invoke(this.Plugin.DataManager.Excel, [
                     path,
                     lang,
                     null,
-                }) as ExcelSheet<QuestData>;
+                ]) as ExcelSheet<QuestData>;
             // default to english if reflection failed
             sheet ??= this.Plugin.DataManager.Excel.GetSheet<QuestData>(path);
             var firstData = sheet?.GetRow(0);
@@ -657,7 +642,9 @@ namespace QuestMap {
 
             ImGui.SameLine();
             if (Util.IconButton(FontAwesomeIcon.Book)) {
-                this.Plugin.Common.Functions.Journal.OpenQuest(quest);
+                unsafe {
+                    AgentQuestJournal.Instance()->OpenForQuest(quest.RowId & 0xFFFF, 1);
+                }
             }
 
             Util.Tooltip("Open quest in Journal");
@@ -836,7 +823,7 @@ namespace QuestMap {
                 };
                 var textColour = Colours.Text;
 
-                var completed = this.Plugin.Common.Functions.Journal.IsQuestCompleted(quest.RowId);
+                var completed = QuestManager.IsQuestComplete(quest.RowId);
                 if (completed) {
                     colour.W = .5f;
                     textColour = (uint) ((0x80 << 24) | (textColour & 0xFFFFFF));
@@ -885,7 +872,9 @@ namespace QuestMap {
                             }
 
                             if (right) {
-                                this.Plugin.Common.Functions.Journal.OpenQuest(id);
+                                unsafe {
+                                    AgentQuestJournal.Instance()->OpenForQuest(id, 1);
+                                }
                             }
 
                             break;
@@ -901,7 +890,7 @@ namespace QuestMap {
             // ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 5);
         }
 
-        private static readonly byte[] NewLinePayload = { 0x02, 0x10, 0x01, 0x03 };
+        private static readonly byte[] NewLinePayload = [0x02, 0x10, 0x01, 0x03];
 
         private SeString Convert(Lumina.Text.SeString lumina) {
             var se = (SeString) lumina;
