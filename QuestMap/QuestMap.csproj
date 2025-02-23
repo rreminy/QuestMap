@@ -3,7 +3,7 @@
     <PropertyGroup>
         <TargetFramework>net8-windows</TargetFramework>
         <RootNamespace>QuestMap</RootNamespace>
-        <Version>1.4.8</Version>
+        <Version>1.6.0</Version>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -48,8 +48,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="AutomaticGraphLayout" Version="1.1.12"/>
-        <PackageReference Include="DalamudPackager" Version="2.1.13" />
+        <PackageReference Include="AutomaticGraphLayout" Version="1.1.12" />
+        <PackageReference Include="DalamudPackager" Version="11.0.0" />
         <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
     </ItemGroup>
 

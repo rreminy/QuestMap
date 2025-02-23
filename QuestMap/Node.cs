@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 
 namespace QuestMap {
     internal class Node<T> {
@@ -152,7 +152,7 @@ namespace QuestMap {
 
         internal static IEnumerable<Quest> PreviousQuests(this Quest quest) {
             foreach (var previous in quest.PreviousQuest) {
-                if (previous != null && previous.Row != 0) {
+                if (previous.IsValid && previous.RowId != 0) {
                     yield return previous.Value!;
                 }
             }

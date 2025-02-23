@@ -31,7 +31,8 @@ namespace QuestMap {
         internal PluginUi Ui { get; }
         private Commands Commands { get; }
 
-        public Plugin() {
+        public Plugin(IDalamudPluginInterface pluginInterface) {
+            pluginInterface.Inject(this);
             this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
 
             var graphChannel = Channel.CreateUnbounded<GraphInfo>();

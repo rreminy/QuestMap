@@ -5,6 +5,7 @@ using Lumina.Excel;
 using Lumina.Text;
 
 namespace QuestMap {
+    /* AG TODO: Reimplement this
     [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
     [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
     [SuppressMessage("ReSharper", "ClassNeverInstantiated.Global")]
@@ -21,4 +22,5 @@ namespace QuestMap {
             this.Text = parser.ReadColumn<SeString>(1)!;
         }
     }
+    */
 }

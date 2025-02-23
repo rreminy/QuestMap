@@ -11,12 +11,13 @@ using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Textures.TextureWraps;
+using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
 using Lumina.Data;
 using Lumina.Excel;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
@@ -85,7 +86,7 @@ namespace QuestMap {
                         return false;
                     }
 
-                    if (!this.Plugin.Config.ShowSeasonal && quest.Festival.Row != 0) {
+                    if (!this.Plugin.Config.ShowSeasonal && quest.Festival.RowId != 0) {
                         return false;
                     }
 
@@ -107,7 +108,7 @@ namespace QuestMap {
                             return false;
                         }
 
-                        if (items.All(item => item.ItemUICategory.Row != 81)) {
+                        if (items.All(item => item.ItemUICategory.RowId != 81)) {
                             return false;
                         }
                     }
@@ -148,7 +149,7 @@ namespace QuestMap {
                     var allItems = this.Plugin.Config.ItemVis != Visibility.Hidden;
                     var anyItemVisible = allItems || this.Plugin.Config.MinionVis != Visibility.Hidden;
                     if (anyItemVisible && this.Plugin.Quests.ItemRewards.TryGetValue(quest.RowId, out var items)) {
-                        var toShow = items.Where(item => allItems || item.ItemUICategory.Row == 81);
+                        var toShow = items.Where(item => allItems || item.ItemUICategory.RowId == 81);
                         drawItems.AddRange(toShow.Select(item => (quest, true, $"{this.Convert(item.Name)}##item-{quest.RowId}-{item.RowId}")));
                     }
 
@@ -293,7 +294,7 @@ namespace QuestMap {
                                 ImGui.PushStyleColor(ImGuiCol.Text, disabled);
                             }
 
-                            var ret = ImGui.Selectable(name, this.Quest == quest);
+                            var ret = ImGui.Selectable(name, this.Quest is not null && this.Quest.Value.RowId == quest.RowId);
 
                             if (completed) {
                                 ImGui.PopStyleColor();
@@ -345,7 +346,7 @@ namespace QuestMap {
             if (this._relayout && this.Quest != null) {
                 this.Graph = null;
                 this.CancellationTokenSource?.Cancel();
-                this.CancellationTokenSource = this.Plugin.Quests.StartGraphRecalculation(this.Quest);
+                this.CancellationTokenSource = this.Plugin.Quests.StartGraphRecalculation(this.Quest.Value);
                 this._relayout = false;
             }
 
@@ -356,12 +357,12 @@ namespace QuestMap {
             var remove = 0u;
 
             foreach (var id in this.InfoWindows) {
-                var quest = this.Plugin.DataManager.GetExcelSheet<Quest>()!.GetRow(id);
+                var quest = this.Plugin.DataManager.GetExcelSheet<Quest>().GetRowOrDefault(id);
                 if (quest == null) {
                     continue;
                 }
 
-                if (this.DrawInfoWindow(quest)) {
+                if (this.DrawInfoWindow(quest.Value)) {
                     remove = id;
                 }
             }
@@ -381,7 +382,7 @@ namespace QuestMap {
 
             var completed = QuestManager.IsQuestComplete(quest.RowId);
 
-            ImGui.TextUnformatted($"Level: {quest.ClassJobLevel0}");
+            ImGui.TextUnformatted($"Level: {quest.ClassJobLevel[0]}");
 
             if (completed) {
                 ImGui.PushFont(UiBuilder.IconFont);
@@ -407,10 +408,10 @@ namespace QuestMap {
             }
 
             var rewards = new List<string>();
-            var paramGrow = this.Plugin.DataManager.GetExcelSheet<ParamGrow>()!.GetRow(quest.ClassJobLevel0);
+            var paramGrow = this.Plugin.DataManager.GetExcelSheet<ParamGrow>().GetRowOrDefault(quest.ClassJobLevel[0]);
             var xp = 0;
             if (paramGrow != null) {
-                xp = quest.ExpFactor * paramGrow.ScaledQuestXP * paramGrow.QuestExpModifier / 100;
+                xp = quest.ExpFactor * paramGrow.Value.ScaledQuestXP * paramGrow.Value.QuestExpModifier / 100;
             }
 
             if (xp > 0) {
@@ -477,16 +478,16 @@ namespace QuestMap {
                 additionalRewards.Add((this.Convert(job.Name).ToString(), 62000 + job.RowId, 1));
             }
 
-            for (var i = 0; i < quest.ItemCatalyst.Length; i++) {
+            for (var i = 0; i < quest.ItemCatalyst.Count; i++) {
                 var catalyst = quest.ItemCatalyst[i];
                 var amount = quest.ItemCountCatalyst[i];
 
-                if (catalyst.Row != 0) {
+                if (catalyst.RowId != 0) {
                     additionalRewards.Add((this.Convert(catalyst.Value!.Name), catalyst.Value.Icon, amount));
                 }
             }
 
-            foreach (var generalAction in quest.GeneralActionReward.Where(row => row.Row != 0)) {
+            foreach (var generalAction in quest.GeneralActionReward.Where(row => row.RowId != 0)) {
                 additionalRewards.Add((this.Convert(generalAction.Value!.Name), (uint) generalAction.Value.Icon, 1));
             }
 
@@ -498,21 +499,21 @@ namespace QuestMap {
                 additionalRewards.Add((this.Convert(emote.Name), emote.Icon, 1));
             }
 
-            if (quest.OtherReward.Row != 0) {
+            if (quest.OtherReward.RowId != 0) {
                 additionalRewards.Add((this.Convert(quest.OtherReward.Value!.Name), quest.OtherReward.Value.Icon, 1));
             }
 
             if (quest.ReputationReward > 0) {
-                var beastTribe = quest.BeastTribe.Value;
+                var beastTribe = quest.BeastTribe.ValueNullable;
                 if (beastTribe != null) {
-                    additionalRewards.Add((this.Convert(beastTribe.NameRelation), beastTribe.Icon, quest.ReputationReward));
+                    additionalRewards.Add((this.Convert(beastTribe.Value.NameRelation), beastTribe.Value.Icon, quest.ReputationReward));
                 }
             }
 
             if (quest.TomestoneReward > 0) {
-                var tomestone = this.Plugin.DataManager.GetExcelSheet<TomestonesItem>()!.FirstOrDefault(row => row.Tomestones.Row == quest.TomestoneReward);
-                var item = tomestone?.Item?.Value;
-                if (item != null) {
+                var tomestone = this.Plugin.DataManager.GetExcelSheet<TomestonesItem>().FirstOrDefault(row => row.Tomestones.RowId == quest.TomestoneReward);
+                if (tomestone.Item.IsValid) {
+                    var item = tomestone.Item.Value;
                     additionalRewards.Add((this.Convert(item.Name), item.Icon, quest.TomestoneCountReward));
                 }
             }
@@ -520,12 +521,12 @@ namespace QuestMap {
             if (quest.ItemRewardType is 0 or 1 or 3 or 5) {
                 DrawItemRewards(
                     "Rewards",
-                    quest.ItemReward
+                    quest.Reward // AG TODO: Originally .ItemReward. There are multiple "Reward" properties in quest and therefore figuring out may be needed
                         .Zip(quest.ItemCountReward, (id, qty) => (id, qty))
-                        .Where(entry => entry.id != 0)
-                        .Select(entry => (item: this.Plugin.DataManager.GetExcelSheet<Item>()!.GetRow(entry.id), entry.qty))
+                        .Where(entry => entry.id.RowId != 0)
+                        .Select(entry => (item: this.Plugin.DataManager.GetExcelSheet<Item>().GetRowOrDefault(entry.id.RowId), entry.qty))
                         .Where(entry => entry.item != null)
-                        .Select(entry => (this.Convert(entry.item!.Name), (uint) entry.item.Icon, entry.qty))
+                        .Select(entry => (this.Convert(entry.item!.Value.Name), (uint) entry.item!.Value.Icon, entry.qty))
                         .Concat(additionalRewards)
                 );
 
@@ -533,18 +534,18 @@ namespace QuestMap {
                     "Optional rewards",
                     quest.OptionalItemReward
                         .Zip(quest.OptionalItemCountReward, (row, qty) => (row, qty))
-                        .Where(entry => entry.row.Row != 0)
-                        .Select(entry => (item: entry.row.Value, entry.qty))
+                        .Where(entry => entry.row.RowId != 0)
+                        .Select(entry => (item: entry.row.ValueNullable, entry.qty))
                         .Where(entry => entry.item != null)
-                        .Select(entry => (this.Convert(entry.item!.Name), (uint) entry.item.Icon, entry.qty))
+                        .Select(entry => (this.Convert(entry.item!.Value.Name), (uint) entry.item!.Value.Icon, entry.qty))
                 );
             }
 
             if (this.Plugin.Quests.InstanceRewards.TryGetValue(quest.RowId, out var instances)) {
                 ImGui.TextUnformatted("Instances");
 
-                foreach (var instance in instances) {
-                    var icon = instance.ContentType.Value?.Icon ?? 0;
+                foreach (var instance in instances.Where(instance => instance.ContentType.IsValid)) {
+                    var icon = instance.ContentType.Value.Icon;
                     if (icon > 0) {
                         var image = GetIcon(icon);
                         if (image != null) {
@@ -575,6 +576,7 @@ namespace QuestMap {
                 ImGui.Separator();
             }
 
+            /* AG TODO: Reimplementation
             var id = quest.RowId & 0xFFFF;
             var lang = this.Plugin.ClientState.ClientLanguage switch {
                 ClientLanguage.English => Language.English,
@@ -604,6 +606,7 @@ namespace QuestMap {
                 ImGui.TextUnformatted(this.Convert(firstData.Text).ToString());
                 ImGui.PopTextWrapPos();
             }
+            */
 
             ImGui.Separator();
 
@@ -613,17 +616,17 @@ namespace QuestMap {
                 }
 
                 var mapLink = new MapLinkPayload(
-                    level.Territory.Row,
-                    level.Map.Row,
-                    (int) (level.X * 1_000f),
-                    (int) (level.Z * 1_000f)
+                    level.Value.Territory.RowId,
+                    level.Value.Map.RowId,
+                    (int) (level.Value.X * 1_000f),
+                    (int) (level.Value.Z * 1_000f)
                 );
 
                 this.Plugin.GameGui.OpenMapWithMapLink(mapLink);
             }
 
-            var issuer = this.Plugin.DataManager.GetExcelSheet<ENpcResident>()!.GetRow(quest.IssuerStart)?.Singular ?? "Unknown";
-            var target = this.Plugin.DataManager.GetExcelSheet<ENpcResident>()!.GetRow(quest.TargetEnd)?.Singular ?? "Unknown";
+            var issuer = this.Plugin.DataManager.GetExcelSheet<ENpcResident>().GetRow(quest.IssuerStart.RowId).Singular.ExtractText() ?? "Unknown";
+            var target = this.Plugin.DataManager.GetExcelSheet<ENpcResident>().GetRow(quest.TargetEnd.RowId).Singular.ExtractText() ?? "Unknown";
             ImGui.TextUnformatted(issuer);
             ImGui.PushFont(UiBuilder.IconFont);
             ImGui.SameLine();
@@ -814,7 +817,7 @@ namespace QuestMap {
 
                 var quest = (Quest) node.UserData;
 
-                var colour = quest.EventIconType.Row switch {
+                var colour = quest.EventIconType.RowId switch {
                     1 => Colours.NormalQuest, // normal
                     3 => Colours.MsqQuest, // msq
                     8 => Colours.BlueQuest, // blue
@@ -833,7 +836,7 @@ namespace QuestMap {
 
                 drawn.Add((start, end, quest.RowId));
 
-                if (quest == this.Quest) {
+                if (this.Quest is not null && quest.RowId == this.Quest.Value.RowId) {
                     drawList.AddRect(start - Vector2.One, end + Vector2.One, Colours.Line, 5, ImDrawFlags.RoundCornersAll);
                 }
 
@@ -892,19 +895,25 @@ namespace QuestMap {
 
         private static readonly byte[] NewLinePayload = [0x02, 0x10, 0x01, 0x03];
 
-        private SeString Convert(Lumina.Text.SeString lumina) {
-            var se = (SeString) lumina;
-            for (var i = 0; i < se.Payloads.Count; i++) {
-                switch (se.Payloads[i].Type) {
+
+
+        private SeString Convert(SeString se)
+        {
+            for (var i = 0; i < se.Payloads.Count; i++)
+            {
+                switch (se.Payloads[i].Type)
+                {
                     case PayloadType.Unknown:
-                        if (se.Payloads[i].Encode().SequenceEqual(NewLinePayload)) {
+                        if (se.Payloads[i].Encode().SequenceEqual(NewLinePayload))
+                        {
                             se.Payloads[i] = new TextPayload("\n");
                         }
 
                         break;
                     case PayloadType.RawText:
-                        if (se.Payloads[i] is TextPayload payload) {
-                            payload.Text = this.Plugin.Interface.Sanitizer.Sanitize(payload.Text);
+                        if (se.Payloads[i] is TextPayload payload)
+                        {
+                            payload.Text = this.Plugin.Interface.Sanitizer.Sanitize(payload.Text ?? string.Empty);
                         }
 
                         break;
@@ -913,5 +922,9 @@ namespace QuestMap {
 
             return se;
         }
+
+        private SeString Convert(Lumina.Text.SeString lumina) => this.Convert(lumina.ToDalamudString());
+
+        private SeString Convert(Lumina.Text.ReadOnly.ReadOnlySeString lumina) => this.Convert(lumina.ToDalamudString());
     }
 }

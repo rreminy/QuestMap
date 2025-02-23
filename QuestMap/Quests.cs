@@ -6,13 +6,13 @@ using System.Threading;
 using System.Threading.Channels;
 using ImGuiNET;
 using Lumina.Excel;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
 using Microsoft.Msagl.Layout.Layered;
 using Microsoft.Msagl.Miscellaneous;
-using Action = Lumina.Excel.GeneratedSheets.Action;
+using Action = Lumina.Excel.Sheets.Action;
 
 namespace QuestMap {
     internal class Quests {
@@ -41,19 +41,20 @@ namespace QuestMap {
             var linkedInstances = new HashSet<ContentFinderCondition>();
 
             var allQuests = new Dictionary<uint, Quest>();
-            foreach (var quest in this.Plugin.DataManager.GetExcelSheet<Quest>()!) {
-                if (quest.Name.RawString.Length == 0 || quest.RowId == 65536) {
+            foreach (var quest in this.Plugin.DataManager.GetExcelSheet<Quest>()) {
+                if (quest.Name.ByteLength == 0 || quest.RowId == 65536) {
                     continue;
                 }
 
                 allQuests[quest.RowId] = quest;
 
-                if (quest.EmoteReward.Row != 0) {
+                if (quest.EmoteReward.RowId != 0) {
                     emoteRewards[quest.RowId] = quest.EmoteReward.Value!;
                 }
 
-                foreach (var row in quest.ItemReward.Where(item => item != 0)) {
-                    var item = this.Plugin.DataManager.GetExcelSheet<Item>()!.GetRow(row);
+                // AG TODO: Used to be .ItemReward
+                foreach (var row in quest.Reward.Where(item => item.RowId != 0)) {
+                    var item = this.Plugin.DataManager.GetExcelSheet<Item>().GetRowOrDefault(row.RowId);
                     if (item == null) {
                         continue;
                     }
@@ -66,10 +67,10 @@ namespace QuestMap {
                         itemRewards[quest.RowId] = rewards;
                     }
 
-                    rewards.Add(item);
+                    rewards.Add(item.Value);
                 }
 
-                foreach (var row in quest.OptionalItemReward.Where(item => item.Row != 0)) {
+                foreach (var row in quest.OptionalItemReward.Where(item => item.RowId != 0)) {
                     var item = row.Value;
 
                     List<Item> rewards;
@@ -83,7 +84,7 @@ namespace QuestMap {
                     rewards.Add(item!);
                 }
 
-                if (quest.ActionReward.Row != 0) {
+                if (quest.ActionReward.RowId != 0) {
                     actionRewards[quest.RowId] = quest.ActionReward.Value!;
                 }
 
@@ -95,13 +96,13 @@ namespace QuestMap {
                     }
                 }
 
-                if (quest.BeastTribe.Row != 0 && !quest.IsRepeatable && quest.BeastReputationRank.Row == 0) {
+                if (quest.BeastTribe.RowId != 0 && !quest.IsRepeatable && quest.BeastReputationRank.RowId == 0) {
                     beastRewards[quest.RowId] = quest.BeastTribe.Value!;
                 }
 
                 var jobReward = this.JobUnlocks(quest);
                 if (jobReward != null) {
-                    jobRewards[quest.RowId] = jobReward;
+                    jobRewards[quest.RowId] = jobReward.Value;
                 }
             }
 
@@ -118,7 +119,7 @@ namespace QuestMap {
 
         private static readonly Vector2 TextOffset = new(5, 2);
 
-        internal CancellationTokenSource StartGraphRecalculation(ExcelRow quest) {
+        internal CancellationTokenSource StartGraphRecalculation(Quest quest) {
             var cts = new CancellationTokenSource();
             new Thread(async () => {
                 var info = this.GetGraphInfo(quest, cts.Token);
@@ -130,7 +131,7 @@ namespace QuestMap {
             return cts;
         }
 
-        private GraphInfo? GetGraphInfo(ExcelRow quest, CancellationToken cancel) {
+        private GraphInfo? GetGraphInfo(Quest quest, CancellationToken cancel) {
             if (!this.AllNodes.TryGetValue(quest.RowId, out var first)) {
                 return null;
             }
@@ -175,6 +176,7 @@ namespace QuestMap {
                 AddNode(node);
             }
 
+            /* AG TODO: Reimplement this (MSQ Consolidation)
             foreach (var node in first.Ancestors(this.ConsolidateMsq)) {
                 if (cancel.IsCancellationRequested) {
                     return null;
@@ -182,6 +184,7 @@ namespace QuestMap {
 
                 AddNode(node);
             }
+            */
 
             foreach (var (sourceId, targetId) in links) {
                 if (cancel.IsCancellationRequested) {
@@ -268,7 +271,7 @@ namespace QuestMap {
                 property.SetValue(newQuest, property.GetValue(quest));
             }
 
-            newQuest.Name = new Lumina.Text.SeString($"{name} MSQ");
+            //newQuest.Name = new Lumina.Text.SeString($"{name} MSQ"); // AG FIXME: Cannot be done
             return newQuest;
         }
 
@@ -279,13 +282,16 @@ namespace QuestMap {
 
             var unlocks = new HashSet<ContentFinderCondition>();
 
-            if (quest.InstanceContentUnlock.Row != 0) {
-                var cfc = this.Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()!.FirstOrDefault(cfc => cfc.Content == quest.InstanceContentUnlock.Row && cfc.ContentLinkType == 1);
-                if (cfc != null && cfc.UnlockQuest.Row == 0) {
+            if (quest.InstanceContentUnlock.RowId != 0) {
+                var cfcs = this.Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()
+                    .Where(cfc => cfc.Content.RowId == quest.InstanceContentUnlock.RowId && cfc.ContentLinkType == 1)
+                    .Where(cfc => cfc.UnlockQuest.IsValid && cfc.UnlockQuest.RowId == 0);
+                foreach (var cfc in cfcs) {
                     unlocks.Add(cfc);
                 }
             }
 
+            /* AG TODO: Reimplement this
             var instanceRefs = quest.ScriptInstruction
                 .Zip(quest.ScriptArg, (ins, arg) => (ins, arg))
                 .Where(x => x.ins.RawString.StartsWith("INSTANCEDUNGEON"));
@@ -308,15 +314,17 @@ namespace QuestMap {
 
                 unlocks.Add(cfc);
             }
+            */
 
             return unlocks;
         }
 
         private ClassJob? JobUnlocks(Quest quest) {
-            if (quest.ClassJobUnlock.Row > 0) {
+            if (quest.ClassJobUnlock.RowId > 0) {
                 return quest.ClassJobUnlock.Value;
             }
 
+            /* AG TODO: Reimplement this
             if (quest.ScriptInstruction.All(ins => ins.RawString.StartsWith("UNLOCK_IMAGE_CLASS"))) {
                 return null;
             }
@@ -328,6 +336,8 @@ namespace QuestMap {
             return jobId == 0
                 ? null
                 : this.Plugin.DataManager.GetExcelSheet<ClassJob>()!.GetRow(jobId);
+            */
+            return null;
         }
     }
 }
