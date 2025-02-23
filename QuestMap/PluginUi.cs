@@ -625,8 +625,8 @@ namespace QuestMap {
                 this.Plugin.GameGui.OpenMapWithMapLink(mapLink);
             }
 
-            var issuer = this.Plugin.DataManager.GetExcelSheet<ENpcResident>().GetRow(quest.IssuerStart.RowId).Singular.ExtractText() ?? "Unknown";
-            var target = this.Plugin.DataManager.GetExcelSheet<ENpcResident>().GetRow(quest.TargetEnd.RowId).Singular.ExtractText() ?? "Unknown";
+            var issuer = this.Plugin.DataManager.GetExcelSheet<ENpcResident>().GetRowOrDefault(quest.IssuerStart.RowId)?.Singular.ExtractText() ?? "Unknown";
+            var target = this.Plugin.DataManager.GetExcelSheet<ENpcResident>().GetRowOrDefault(quest.TargetEnd.RowId)?.Singular.ExtractText() ?? "Unknown";
             ImGui.TextUnformatted(issuer);
             ImGui.PushFont(UiBuilder.IconFont);
             ImGui.SameLine();
