@@ -219,7 +219,7 @@ namespace QuestMap {
                             anyChanged = true;
                         }
 
-                        if (ImGui.MenuItem("Condense final MSQ quests", null, ref this.Plugin.Config.CondenseMsq)) {
+                        if (ImGui.MenuItem("Condense final MSQ quests (not implemented)", null, ref this.Plugin.Config.CondenseMsq)) {
                             this._relayout = true;
                             anyChanged = true;
                         }
