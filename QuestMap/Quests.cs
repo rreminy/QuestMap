@@ -156,13 +156,10 @@ namespace QuestMap {
                 }
             }
 
-            var sw = Stopwatch.StartNew();
             foreach (var node in first.Traverse()) {
                 cancel.ThrowIfCancellationRequested();
                 AddNode(node);
             }
-            sw.Stop();
-            this.Plugin.Logger.Info($"Traverse: {sw.ElapsedMilliseconds}ms");
 
             /* AG TODO: Reimplement this (MSQ Consolidation)
             foreach (var node in first.Ancestors(this.ConsolidateMsq)) {
@@ -171,7 +168,6 @@ namespace QuestMap {
             }
             */
 
-            sw = Stopwatch.StartNew();
             foreach (var (sourceId, targetId) in links) {
                 cancel.ThrowIfCancellationRequested();
 
@@ -188,17 +184,12 @@ namespace QuestMap {
 
                 g.Edges.Add(edge);
             }
-            sw.Stop();
-            this.Plugin.Logger.Info($"Edges: {sw.ElapsedMilliseconds}ms");
 
-            sw = Stopwatch.StartNew();
             var msAglCancelToken = new CancelToken();
             using (var registration = cancel.Register(() => msAglCancelToken.Canceled = true))
             {
                 LayoutHelpers.CalculateLayout(g, this.LayoutSettings, msAglCancelToken);
             }
-            sw.Stop();
-            this.Plugin.Logger.Info($"Layout: {sw.ElapsedMilliseconds}ms");
 
             Node? centre = g.Nodes.FirstOrDefault();
             return new GraphInfo(g, centre);
