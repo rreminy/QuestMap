@@ -43,8 +43,7 @@ namespace QuestMap {
                 parents.Push(parent);
             }
 
-            while (parents.Any()) {
-                var next = parents.Pop();
+            while (parents.TryPop(out var next)) {
                 yield return next;
                 foreach (var parent in next.Parents) {
                     parents.Push(parent);
@@ -63,8 +62,7 @@ namespace QuestMap {
                     });
             }
 
-            while (parents.Any()) {
-                var next = parents.Pop();
+            while (parents.TryPop(out var next)) {
                 yield return next;
                 foreach (var parent in next.Parents) {
                     var consolidated = consolidator(parent.Value);
@@ -80,8 +78,7 @@ namespace QuestMap {
         internal IEnumerable<Node<T>> Traverse() {
             var stack = new Stack<Node<T>>();
             stack.Push(this);
-            while (stack.Any()) {
-                var next = stack.Pop();
+            while (stack.TryPop(out var next)) {
                 yield return next;
                 foreach (var child in next.Children) {
                     stack.Push(child);
@@ -92,8 +89,7 @@ namespace QuestMap {
         internal IEnumerable<Tuple<Node<T>, uint>> TraverseWithDepth() {
             var stack = new Stack<Tuple<Node<T>, uint>>();
             stack.Push(Tuple.Create(this, (uint) 0));
-            while (stack.Any()) {
-                var next = stack.Pop();
+            while (stack.TryPop(out var next)) {
                 yield return next;
                 foreach (var child in next.Item1.Children) {
                     stack.Push(Tuple.Create(child, next.Item2 + 1));
@@ -115,8 +111,8 @@ namespace QuestMap {
                     allNodes[item.Key] = ourNode;
                 }
 
-                var previous = item.Value.PreviousQuests().ToList();
-                if (previous.Count == 0) {
+                var previous = item.Value.PreviousQuests();
+                if (!previous.Any()) {
                     rootNodes.Add(ourNode);
                 } else {
                     foreach (var prev in previous) {

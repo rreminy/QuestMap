@@ -2,14 +2,10 @@
 
     <PropertyGroup>
         <TargetFramework>net9-windows</TargetFramework>
-        <RootNamespace>QuestMap</RootNamespace>
         <Version>1.7.0.1</Version>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-        <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
         <OutputPath>bin/</OutputPath>
     </PropertyGroup>
 

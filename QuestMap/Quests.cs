@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
@@ -7,6 +8,7 @@ using System.Threading.Channels;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
+using Microsoft.Msagl.Core;
 using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
@@ -122,9 +124,15 @@ namespace QuestMap {
         internal CancellationTokenSource StartGraphRecalculation(Quest quest) {
             var cts = new CancellationTokenSource();
             new Thread(async () => {
-                var info = this.GetGraphInfo(quest, cts.Token);
-                if (info != null) {
-                    await this.GraphChannel.WriteAsync(info, cts.Token);
+                try
+                {
+                    var info = this.GetGraphInfo(quest, cts.Token);
+                    if (info != null) await this.GraphChannel.WriteAsync(info, cts.Token);
+                }
+                catch (OperationCanceledException) { /* Empty */}
+                catch (Exception ex)
+                {
+                    // TODO: Log exception
                 }
             }).Start();
 
@@ -205,7 +213,9 @@ namespace QuestMap {
                 g.Edges.Add(edge);
             }
 
-            LayoutHelpers.CalculateLayout(g, this.LayoutSettings, null);
+            var msAglCancelToken = new CancelToken();
+            cancel.Register(() => msAglCancelToken.Canceled = true);
+            LayoutHelpers.CalculateLayout(g, this.LayoutSettings, msAglCancelToken);
 
             Node? centre = null;
             if (g.Nodes.Count > 0) {

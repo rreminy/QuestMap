@@ -895,8 +895,6 @@ namespace QuestMap {
 
         private static readonly byte[] NewLinePayload = [0x02, 0x10, 0x01, 0x03];
 
-
-
         private SeString Convert(SeString se)
         {
             for (var i = 0; i < se.Payloads.Count; i++)
