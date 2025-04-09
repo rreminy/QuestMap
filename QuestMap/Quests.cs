@@ -286,10 +286,7 @@ namespace QuestMap {
         }
 
         private HashSet<ContentFinderCondition> InstanceUnlocks(Quest quest, ICollection<ContentFinderCondition> others) {
-            if (quest.IsRepeatable) {
-                return [];
-            }
-
+            if (quest.IsRepeatable) return [];
             var unlocks = new HashSet<ContentFinderCondition>();
 
             if (quest.InstanceContentUnlock.RowId != 0) {
@@ -301,31 +298,18 @@ namespace QuestMap {
                 }
             }
 
-            /* AG TODO: Reimplement this
-            var instanceRefs = quest.ScriptInstruction
-                .Zip(quest.ScriptArg, (ins, arg) => (ins, arg))
-                .Where(x => x.ins.RawString.StartsWith("INSTANCEDUNGEON"));
-
-            foreach (var reference in instanceRefs) {
-                var key = reference.arg;
-
-                // var content = this.Plugin.Interface.Data.GetExcelSheet<InstanceContent>().GetRow(key);
-
-                var cfc = this.Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()!.FirstOrDefault(cfc => cfc.Content == key && cfc.ContentLinkType == 1);
-                if (cfc == null || cfc.UnlockQuest.Row != 0 || others.Contains(cfc)) {
-                    continue;
-                }
-
-                if (!quest.ScriptInstruction.Any(i => i.RawString == "UNLOCK_ADD_NEW_CONTENT_TO_CF" || i.RawString.StartsWith("UNLOCK_DUNGEON"))) {
-                    if (quest.ScriptInstruction.Any(i => i.RawString.StartsWith("LOC_ITEM"))) {
+            var questParams = quest.QuestParams.Select(param => (param.ScriptInstruction.ExtractText(), param.ScriptArg)).ToList();
+            foreach (var (ins, arg) in questParams)
+            {
+                if (ins.StartsWith("INSTANCEDUNGEON"))
+                {
+                    var cfc = this.Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()!.FirstOrDefault(cfc => cfc.Content.RowId == arg && cfc.ContentLinkType == 1);
+                    if (cfc.RowId == 0 || cfc.UnlockQuest.RowId != 0 || others.Contains(cfc)) continue;
+                    if (questParams.Any(param => param.Item1 == "UNLOCK_ADD_NEW_CONTENT_TO_CF" || param.Item1.StartsWith("UNLOCK_DUNGEON")) && questParams.Any(param => param.Item1.StartsWith("LOC_ITEM")))
                         continue;
-                    }
+                    unlocks.Add(cfc);
                 }
-
-                unlocks.Add(cfc);
             }
-            */
-
             return unlocks;
         }
 
@@ -334,20 +318,12 @@ namespace QuestMap {
                 return quest.ClassJobUnlock.Value;
             }
 
-            /* AG TODO: Reimplement this
-            if (quest.ScriptInstruction.All(ins => ins.RawString.StartsWith("UNLOCK_IMAGE_CLASS"))) {
-                return null;
-            }
-
-            var jobId = quest.ScriptInstruction
-                .Zip(quest.ScriptArg, (ins, arg) => (ins, arg))
-                .FirstOrDefault(entry => entry.ins.RawString.StartsWith("CLASSJOB"))
-                .arg;
+            var questParams = quest.QuestParams.Select(param => (param.ScriptInstruction.ExtractText(), param.ScriptArg)).ToList();
+            if (questParams.All(param => param.Item1.StartsWith("UNLOCK_IMAGE_CLASS"))) return null;
+            var jobId = questParams.FirstOrDefault(param => param.Item1.StartsWith("CLASSJOB")).ScriptArg;
             return jobId == 0
                 ? null
                 : this.Plugin.DataManager.GetExcelSheet<ClassJob>()!.GetRow(jobId);
-            */
-            return null;
         }
     }
 }

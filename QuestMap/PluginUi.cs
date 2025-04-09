@@ -893,16 +893,14 @@ namespace QuestMap {
             // ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 5);
         }
 
-        private static readonly byte[] NewLinePayload = [0x02, 0x10, 0x01, 0x03];
-
         private SeString Convert(SeString se)
         {
             for (var i = 0; i < se.Payloads.Count; i++)
             {
                 switch (se.Payloads[i].Type)
                 {
-                    case PayloadType.Unknown:
-                        if (se.Payloads[i].Encode().SequenceEqual(NewLinePayload))
+                    case PayloadType.NewLine:
+                        if (se.Payloads[i] is NewLinePayload)
                         {
                             se.Payloads[i] = new TextPayload("\n");
                         }
