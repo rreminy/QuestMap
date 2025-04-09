@@ -2,10 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Reflection;
 using System.Threading;
-using System.Threading.Channels;
-using Dalamud.Game;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Interface;
@@ -15,8 +12,6 @@ using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
-using Lumina.Data;
-using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
@@ -40,16 +35,14 @@ namespace QuestMap {
 
         private string _filter = string.Empty;
         private Quest? Quest { get; set; }
-        private GeometryGraph? Graph { get; set; }
-        private Node? Centre { get; set; }
-        private ChannelReader<GraphInfo> GraphChannel { get; }
-        private CancellationTokenSource? CancellationTokenSource { get; set; }
+        private GraphWorker? Worker { get; set; }
         private HashSet<uint> InfoWindows { get; } = [];
         private List<(Quest, bool, string)> FilteredQuests { get; } = [];
 
         internal bool Show;
 
         private bool _relayout;
+        private bool _recenter;
         private Vector2 _offset = Vector2.Zero;
         private static readonly Vector2 TextOffset = new(5, 2);
         private const int GridSmall = 10;
@@ -57,9 +50,8 @@ namespace QuestMap {
         private bool _viewDrag;
         private Vector2 _lastDragPos;
 
-        internal PluginUi(Plugin plugin, ChannelReader<GraphInfo> graphChannel) {
+        internal PluginUi(Plugin plugin) {
             this.Plugin = plugin;
-            this.GraphChannel = graphChannel;
 
             this.Refilter();
 
@@ -179,14 +171,7 @@ namespace QuestMap {
         }
 
         private void Draw() {
-            if (this.GraphChannel.TryRead(out var graph)) {
-                this.Graph = graph.Graph;
-                this.Centre = graph.Centre;
-                this.CancellationTokenSource = null;
-            }
-
             this.DrawInfoWindows();
-
             this.DrawMainWindow();
         }
 
@@ -310,7 +295,6 @@ namespace QuestMap {
 
                             this.Quest = quest;
                             this._relayout = true;
-                            this.Graph = null;
                         }
 
                         if (indent) {
@@ -332,22 +316,33 @@ namespace QuestMap {
 
             ImGui.SameLine();
             if (ImGui.BeginChild("quest-map", new Vector2(-1, -1))) {
-                if (this.Quest != null && this.Graph == null) {
-                    ImGui.TextUnformatted("Generating map...");
+                if (this.Quest is null) ImGui.TextUnformatted("Select a quest");
+                else if (this.Worker is null || !this.Worker.Task.IsCompleted) ImGui.TextUnformatted("Generating map...");
+                else if (this.Worker.Task.IsCompleted)
+                {
+                    var task = this.Worker.Task;
+                    if (!task.IsCompletedSuccessfully)
+                    {
+                        var exception = task.Exception?.Flatten().ToString();
+                        if (exception is null) ImGui.TextUnformatted("Task did not complete successfully");
+                        else ImGui.TextUnformatted(exception.ToString());
+                    }
+                    else
+                    {
+                        var graph = task.Result;
+                        if (graph is null) ImGui.TextUnformatted("Task did not complete successfully (null)");
+                        else this.DrawGraph(graph);
+                    }
                 }
-
-                if (this.Graph != null) {
-                    this.DrawGraph(this.Graph);
-                }
-
                 ImGui.EndChild();
             }
 
             if (this._relayout && this.Quest != null) {
-                this.Graph = null;
-                this.CancellationTokenSource?.Cancel();
-                this.CancellationTokenSource = this.Plugin.Quests.StartGraphRecalculation(this.Quest.Value);
+                var oldWorker = this.Worker;
+                this.Worker = this.Plugin.Quests.StartGraphRecalculation(this.Quest.Value);
+                oldWorker?.Dispose();
                 this._relayout = false;
+                this._recenter = true;
             }
 
             ImGui.End();
@@ -677,7 +672,9 @@ namespace QuestMap {
             return ConvertPoint(item.BoundingBox.LeftBottom) + this._offset;
         }
 
-        private void DrawGraph(GeometryGraph graph) {
+        private void DrawGraph(GraphInfo info) {
+            var graph = info.Graph;
+
             // now the fun (tm) begins
             var space = ImGui.GetContentRegionAvail();
             var size = new Vector2(space.X, space.Y);
@@ -689,9 +686,9 @@ namespace QuestMap {
             var canvasTopLeft = ImGui.GetItemRectMin();
             var canvasBottomRight = ImGui.GetItemRectMax();
 
-            if (this.Centre != null) {
-                this._offset = ConvertPoint(this.Centre.Center) * -1 + (canvasBottomRight - canvasTopLeft) / 2;
-                this.Centre = null;
+            if (this._recenter && info.Centre is not null) {
+                this._offset = ConvertPoint(info.Centre.Center) * -1 + (canvasBottomRight - canvasTopLeft) / 2;
+                this._recenter = false;
             }
 
             drawList.PushClipRect(canvasTopLeft, canvasBottomRight, true);

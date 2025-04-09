@@ -21,6 +21,9 @@ namespace QuestMap {
         internal IDataManager DataManager { get; init; } = null!;
 
         [PluginService]
+        internal IPluginLog Logger { get; init; } = null!;
+
+        [PluginService]
         internal IGameGui GameGui { get; init; } = null!;
 
         [PluginService]
@@ -35,9 +38,8 @@ namespace QuestMap {
             pluginInterface.Inject(this);
             this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
 
-            var graphChannel = Channel.CreateUnbounded<GraphInfo>();
-            this.Quests = new Quests(this, graphChannel.Writer);
-            this.Ui = new PluginUi(this, graphChannel.Reader);
+            this.Quests = new Quests(this);
+            this.Ui = new PluginUi(this);
 
             this.Commands = new Commands(this);
         }

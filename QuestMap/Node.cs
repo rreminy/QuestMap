@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.WebSockets;
+using System.Runtime.InteropServices;
 using Lumina.Excel.Sheets;
 
 namespace QuestMap {
@@ -75,16 +77,50 @@ namespace QuestMap {
             }
         }
 
+        public struct TraverseEnumerator
+        {
+            private readonly Stack<Node<T>> _stack = new();
+            public Node<T> Current { readonly get; private set; } = null!;
+
+            public TraverseEnumerator(Node<T> start)
+            {
+                this._stack.Push(start); 
+            }
+
+            public bool MoveNext()
+            {
+                if (this._stack.TryPop(out var node))
+                {
+                    this.Current = node;
+                    var children = node.Children;
+                    for (var index = 0; index < children.Count; index++) this._stack.Push(children[index]);
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        public struct TraverseEnumerable(Node<T> start)
+        {
+            public readonly TraverseEnumerator GetEnumerator() => new(start);
+        }
+
+        internal TraverseEnumerable Traverse() => new(this);
+
+        /*
         internal IEnumerable<Node<T>> Traverse() {
             var stack = new Stack<Node<T>>();
             stack.Push(this);
             while (stack.TryPop(out var next)) {
                 yield return next;
-                foreach (var child in next.Children) {
-                    stack.Push(child);
-                }
+
+                var children = next.Children;
+                for (var index = 0; index < children.Count; index++) stack.Push(children[index]);
+
+                //foreach (var child in next.Children) stack.Push(child);
             }
         }
+        */
 
         internal IEnumerable<Tuple<Node<T>, uint>> TraverseWithDepth() {
             var stack = new Stack<Tuple<Node<T>, uint>>();

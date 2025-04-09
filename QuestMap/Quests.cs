@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Channels;
+using System.Threading.Tasks;
 using ImGuiNET;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
@@ -20,19 +23,17 @@ namespace QuestMap {
     internal class Quests {
         private Plugin Plugin { get; }
 
-        private Dictionary<uint, Node<Quest>> AllNodes { get; }
-        internal IReadOnlyDictionary<uint, List<Item>> ItemRewards { get; }
-        internal IReadOnlyDictionary<uint, Emote> EmoteRewards { get; }
-        internal IReadOnlyDictionary<uint, Action> ActionRewards { get; }
-        internal IReadOnlyDictionary<uint, HashSet<ContentFinderCondition>> InstanceRewards { get; }
-        internal IReadOnlyDictionary<uint, BeastTribe> BeastRewards { get; }
-        internal IReadOnlyDictionary<uint, ClassJob> JobRewards { get; }
-        private ChannelWriter<GraphInfo> GraphChannel { get; }
+        private FrozenDictionary<uint, Node<Quest>> AllNodes { get; }
+        internal FrozenDictionary<uint, List<Item>> ItemRewards { get; }
+        internal FrozenDictionary<uint, Emote> EmoteRewards { get; }
+        internal FrozenDictionary<uint, Action> ActionRewards { get; }
+        internal FrozenDictionary<uint, HashSet<ContentFinderCondition>> InstanceRewards { get; }
+        internal FrozenDictionary<uint, BeastTribe> BeastRewards { get; }
+        internal FrozenDictionary<uint, ClassJob> JobRewards { get; }
         private LayoutAlgorithmSettings LayoutSettings { get; } = new SugiyamaLayoutSettings();
 
-        internal Quests(Plugin plugin, ChannelWriter<GraphInfo> graphChannel) {
+        internal Quests(Plugin plugin) {
             this.Plugin = plugin;
-            this.GraphChannel = graphChannel;
 
             var itemRewards = new Dictionary<uint, List<Item>>();
             var emoteRewards = new Dictionary<uint, Emote>();
@@ -54,12 +55,10 @@ namespace QuestMap {
                     emoteRewards[quest.RowId] = quest.EmoteReward.Value!;
                 }
 
-                // AG TODO: Used to be .ItemReward
+                // AG NOTE: Used to be .ItemReward
                 foreach (var row in quest.Reward.Where(item => item.RowId != 0)) {
                     var item = this.Plugin.DataManager.GetExcelSheet<Item>().GetRowOrDefault(row.RowId);
-                    if (item == null) {
-                        continue;
-                    }
+                    if (item == null) continue;
 
                     List<Item> rewards;
                     if (itemRewards.TryGetValue(quest.RowId, out var items)) {
@@ -72,9 +71,7 @@ namespace QuestMap {
                     rewards.Add(item.Value);
                 }
 
-                foreach (var row in quest.OptionalItemReward.Where(item => item.RowId != 0)) {
-                    var item = row.Value;
-
+                foreach (var item in quest.OptionalItemReward.Where(item => item.IsValid && item.RowId != 0).Select(item => item.Value)) {
                     List<Item> rewards;
                     if (itemRewards.TryGetValue(quest.RowId, out var items)) {
                         rewards = items;
@@ -82,7 +79,6 @@ namespace QuestMap {
                         rewards = [];
                         itemRewards[quest.RowId] = rewards;
                     }
-
                     rewards.Add(item!);
                 }
 
@@ -108,52 +104,36 @@ namespace QuestMap {
                 }
             }
 
-            this.ItemRewards = itemRewards;
-            this.EmoteRewards = emoteRewards;
-            this.ActionRewards = actionRewards;
-            this.InstanceRewards = instanceRewards;
-            this.BeastRewards = beastRewards;
-            this.JobRewards = jobRewards;
+            this.ItemRewards = itemRewards.ToFrozenDictionary();
+            this.EmoteRewards = emoteRewards.ToFrozenDictionary();
+            this.ActionRewards = actionRewards.ToFrozenDictionary();
+            this.InstanceRewards = instanceRewards.ToFrozenDictionary();
+            this.BeastRewards = beastRewards.ToFrozenDictionary();
+            this.JobRewards = jobRewards.ToFrozenDictionary();
 
             var (_, nodes) = Node<Quest>.BuildTree(allQuests);
-            this.AllNodes = nodes;
+            this.AllNodes = nodes.ToFrozenDictionary();
         }
 
         private static readonly Vector2 TextOffset = new(5, 2);
 
-        internal CancellationTokenSource StartGraphRecalculation(Quest quest) {
-            var cts = new CancellationTokenSource();
-            new Thread(async () => {
-                try
-                {
-                    var info = this.GetGraphInfo(quest, cts.Token);
-                    if (info != null) await this.GraphChannel.WriteAsync(info, cts.Token);
-                }
-                catch (OperationCanceledException) { /* Empty */}
-                catch (Exception ex)
-                {
-                    // TODO: Log exception
-                }
-            }).Start();
+        internal GraphWorker StartGraphRecalculation(Quest quest) {
 
-            return cts;
+            var cts = new CancellationTokenSource();
+            var task = Task.Factory.StartNew(() => this.GetGraphInfo(quest, cts.Token), TaskCreationOptions.LongRunning);
+            return new(task, cts);
         }
 
         private GraphInfo? GetGraphInfo(Quest quest, CancellationToken cancel) {
-            if (!this.AllNodes.TryGetValue(quest.RowId, out var first)) {
-                return null;
-            }
-
+            var first = this.AllNodes[quest.RowId];
             var msaglNodes = new Dictionary<uint, Node>();
             var links = new List<(uint, uint)>();
             var g = new GeometryGraph();
 
             void AddNode(Node<Quest> node) {
-                if (msaglNodes.ContainsKey(node.Id)) {
-                    return;
-                }
+                if (msaglNodes.ContainsKey(node.Id)) return;
 
-                var dims = ImGui.CalcTextSize(node.Value.Name.ToString()) + TextOffset * 2;
+                var dims = ImGui.CalcTextSize(node.Value.Name.ExtractText()) + TextOffset * 2;
                 var graphNode = new Node(CurveFactory.CreateRectangle(dims.X, dims.Y, new Point()), node.Value);
                 g.Nodes.Add(graphNode);
                 msaglNodes[node.Id] = graphNode;
@@ -176,28 +156,24 @@ namespace QuestMap {
                 }
             }
 
+            var sw = Stopwatch.StartNew();
             foreach (var node in first.Traverse()) {
-                if (cancel.IsCancellationRequested) {
-                    return null;
-                }
-
+                cancel.ThrowIfCancellationRequested();
                 AddNode(node);
             }
+            sw.Stop();
+            this.Plugin.Logger.Info($"Traverse: {sw.ElapsedMilliseconds}ms");
 
             /* AG TODO: Reimplement this (MSQ Consolidation)
             foreach (var node in first.Ancestors(this.ConsolidateMsq)) {
-                if (cancel.IsCancellationRequested) {
-                    return null;
-                }
-
+                cancel.ThrowIfCancellationRequested();
                 AddNode(node);
             }
             */
 
+            sw = Stopwatch.StartNew();
             foreach (var (sourceId, targetId) in links) {
-                if (cancel.IsCancellationRequested) {
-                    return null;
-                }
+                cancel.ThrowIfCancellationRequested();
 
                 if (!msaglNodes.TryGetValue(sourceId, out var source) || !msaglNodes.TryGetValue(targetId, out var target)) {
                     continue;
@@ -212,19 +188,20 @@ namespace QuestMap {
 
                 g.Edges.Add(edge);
             }
+            sw.Stop();
+            this.Plugin.Logger.Info($"Edges: {sw.ElapsedMilliseconds}ms");
 
+            sw = Stopwatch.StartNew();
             var msAglCancelToken = new CancelToken();
-            cancel.Register(() => msAglCancelToken.Canceled = true);
-            LayoutHelpers.CalculateLayout(g, this.LayoutSettings, msAglCancelToken);
-
-            Node? centre = null;
-            if (g.Nodes.Count > 0) {
-                centre = g.Nodes[0];
+            using (var registration = cancel.Register(() => msAglCancelToken.Canceled = true))
+            {
+                LayoutHelpers.CalculateLayout(g, this.LayoutSettings, msAglCancelToken);
             }
+            sw.Stop();
+            this.Plugin.Logger.Info($"Layout: {sw.ElapsedMilliseconds}ms");
 
-            return cancel.IsCancellationRequested
-                ? null
-                : new GraphInfo(g, centre);
+            Node? centre = g.Nodes.FirstOrDefault();
+            return new GraphInfo(g, centre);
         }
 
         private Quest? ConsolidateMsq(Quest quest) {
@@ -276,16 +253,17 @@ namespace QuestMap {
                 return null;
             }
 
+            // AG FIXME: Cannot be done, Quest is not reflection-friendly
             var newQuest = new Quest();
             foreach (var property in newQuest.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public)) {
                 property.SetValue(newQuest, property.GetValue(quest));
             }
+            //newQuest.Name = new Lumina.Text.SeString($"{name} MSQ");
 
-            //newQuest.Name = new Lumina.Text.SeString($"{name} MSQ"); // AG FIXME: Cannot be done
             return newQuest;
         }
 
-        private HashSet<ContentFinderCondition> InstanceUnlocks(Quest quest, ICollection<ContentFinderCondition> others) {
+        private HashSet<ContentFinderCondition> InstanceUnlocks(Quest quest, HashSet<ContentFinderCondition> others) {
             if (quest.IsRepeatable) return [];
             var unlocks = new HashSet<ContentFinderCondition>();
 
