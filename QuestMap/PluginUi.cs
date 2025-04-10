@@ -12,10 +12,13 @@ using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
+using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
+using static System.Net.Mime.MediaTypeNames;
+using static Dalamud.Interface.Utility.Raii.ImRaii;
 
 namespace QuestMap {
     internal class PluginUi : IDisposable {
@@ -37,7 +40,7 @@ namespace QuestMap {
         private Quest? Quest { get; set; }
         private GraphWorker? Worker { get; set; }
         private HashSet<uint> InfoWindows { get; } = [];
-        private List<(Quest, bool, string)> FilteredQuests { get; } = [];
+        private List<(QuestNode, bool, string)> FilteredQuests { get; } = [];
 
         internal bool Show;
 
@@ -71,10 +74,12 @@ namespace QuestMap {
         private unsafe void Refilter() {
             this.FilteredQuests.Clear();
 
-            var filterLower = this._filter.ToLowerInvariant();
-            var filtered = this.Plugin.DataManager.GetExcelSheet<Quest>()!
-                .Where(quest => {
-                    if (quest.Name.ToString().Length == 0) {
+            var filter = this._filter;
+            var filtered = this.Plugin.Quests.AllNodes.Values
+                .Where(questNode => {
+                    var quest = questNode.Quest;
+
+                    if (string.IsNullOrEmpty(questNode.Name)) {
                         return false;
                     }
 
@@ -125,44 +130,46 @@ namespace QuestMap {
                         return true;
                     }
 
-                    return quest.Name.ToString().ToLowerInvariant().Contains(filterLower)
-                           || this.Plugin.Quests.ItemRewards.TryGetValue(quest.RowId, out var items1) && items1.Any(item => item.Name.ToString().ToLowerInvariant().Contains(filterLower))
-                           || this.Plugin.Quests.EmoteRewards.TryGetValue(quest.RowId, out var emote) && emote.Name.ToString().ToLowerInvariant().Contains(filterLower)
-                           || this.Plugin.Quests.ActionRewards.TryGetValue(quest.RowId, out var action) && action.Name.ToString().ToLowerInvariant().Contains(filterLower)
-                           || this.Plugin.Quests.InstanceRewards.TryGetValue(quest.RowId, out var instances) && instances.Any(instance => instance.Name.ToString().ToLowerInvariant().Contains(filterLower))
-                           || this.Plugin.Quests.BeastRewards.TryGetValue(quest.RowId, out var tribe) && tribe.Name.ToString().ToLowerInvariant().Contains(filterLower)
-                           || this.Plugin.Quests.JobRewards.TryGetValue(quest.RowId, out var job) && job.Name.ToString().ToLowerInvariant().Contains(filterLower);
+                    return questNode.Name.ToLowerInvariant().Contains(filter, StringComparison.InvariantCultureIgnoreCase)
+                           || this.Plugin.Quests.ItemRewards.TryGetValue(quest.RowId, out var items1) && items1.Any(item => item.Name.ToString().Contains(filter, StringComparison.InvariantCultureIgnoreCase))
+                           || this.Plugin.Quests.EmoteRewards.TryGetValue(quest.RowId, out var emote) && emote.Name.ExtractText().Contains(filter, StringComparison.InvariantCultureIgnoreCase)
+                           || this.Plugin.Quests.ActionRewards.TryGetValue(quest.RowId, out var action) && action.Name.ExtractText().Contains(filter, StringComparison.InvariantCultureIgnoreCase)
+                           || this.Plugin.Quests.InstanceRewards.TryGetValue(quest.RowId, out var instances) && instances.Any(instance => instance.Name.ExtractText().Contains(filter, StringComparison.InvariantCultureIgnoreCase))
+                           || this.Plugin.Quests.BeastRewards.TryGetValue(quest.RowId, out var tribe) && tribe.Name.ExtractText().Contains(filter, StringComparison.InvariantCultureIgnoreCase)
+                           || this.Plugin.Quests.JobRewards.TryGetValue(quest.RowId, out var job) && job.Name.ExtractText().Contains(filter, StringComparison.InvariantCultureIgnoreCase);
                 })
-                .SelectMany(quest => {
-                    var drawItems = new List<(Quest, bool, string)> {
-                        (quest, false, $"{this.Convert(quest.Name)}##{quest.RowId}"),
+                .SelectMany(questNode => {
+                    var quest = questNode.Quest;
+
+                    var drawItems = new List<(QuestNode, bool, string)> {
+                        (questNode, false, $"{questNode.Name}##{quest.Id}"),
                     };
 
                     var allItems = this.Plugin.Config.ItemVis != Visibility.Hidden;
                     var anyItemVisible = allItems || this.Plugin.Config.MinionVis != Visibility.Hidden;
-                    if (anyItemVisible && this.Plugin.Quests.ItemRewards.TryGetValue(quest.RowId, out var items)) {
+                    if (anyItemVisible && this.Plugin.Quests.ItemRewards.TryGetValue(questNode.Id, out var items)) {
                         var toShow = items.Where(item => allItems || item.ItemUICategory.RowId == 81);
-                        drawItems.AddRange(toShow.Select(item => (quest, true, $"{this.Convert(item.Name)}##item-{quest.RowId}-{item.RowId}")));
+                        drawItems.AddRange(toShow.Select(item => (questNode, true, $"{this.Convert(item.Name)}##item-{questNode.Id}-{item.RowId}")));
                     }
 
-                    if (this.Plugin.Config.EmoteVis != Visibility.Hidden && this.Plugin.Quests.EmoteRewards.TryGetValue(quest.RowId, out var emote)) {
-                        drawItems.Add((quest, true, $"{this.Convert(emote.Name)}##emote-{quest.RowId}-{emote.RowId}"));
+                    if (this.Plugin.Config.EmoteVis != Visibility.Hidden && this.Plugin.Quests.EmoteRewards.TryGetValue(questNode.Id, out var emote)) {
+                        drawItems.Add((questNode, true, $"{this.Convert(emote.Name)}##emote-{quest.RowId}-{emote.RowId}"));
                     }
 
                     if (this.Plugin.Config.ActionsVis != Visibility.Hidden && this.Plugin.Quests.ActionRewards.TryGetValue(quest.RowId, out var action)) {
-                        drawItems.Add((quest, true, $"{this.Convert(action.Name)}##action-{quest.RowId}-{action.RowId}"));
+                        drawItems.Add((questNode, true, $"{this.Convert(action.Name)}##action-{quest.RowId}-{action.RowId}"));
                     }
 
                     if (this.Plugin.Config.InstanceVis != Visibility.Hidden && this.Plugin.Quests.InstanceRewards.TryGetValue(quest.RowId, out var instances)) {
-                        drawItems.AddRange(instances.Select(instance => (quest, true, $"{this.Convert(instance.Name)}##instance-{quest.RowId}-{instance.RowId}")));
+                        drawItems.AddRange(instances.Select(instance => (questNode, true, $"{this.Convert(instance.Name)}##instance-{quest.RowId}-{instance.RowId}")));
                     }
 
                     if (this.Plugin.Config.TribeVis != Visibility.Hidden && this.Plugin.Quests.BeastRewards.TryGetValue(quest.RowId, out var tribe)) {
-                        drawItems.Add((quest, true, $"{this.Convert(tribe.Name)}##tribe-{quest.RowId}-{tribe.RowId}"));
+                        drawItems.Add((questNode, true, $"{this.Convert(tribe.Name)}##tribe-{quest.RowId}-{tribe.RowId}"));
                     }
 
                     if (this.Plugin.Config.JobVis != Visibility.Hidden && this.Plugin.Quests.JobRewards.TryGetValue(quest.RowId, out var job)) {
-                        drawItems.Add((quest, true, $"{this.Convert(job.Name)}##job-{quest.RowId}-{job.RowId}"));
+                        drawItems.Add((questNode, true, $"{this.Convert(job.Name)}##job-{quest.RowId}-{job.RowId}"));
                     }
 
                     return drawItems;
@@ -171,8 +178,24 @@ namespace QuestMap {
         }
 
         private void Draw() {
+            this.CalculateAllTextDimensions();
             this.DrawInfoWindows();
             this.DrawMainWindow();
+        }
+
+        private void CalculateAllTextDimensions()
+        {
+            foreach (var node in this.Plugin.Quests.AllNodes.Values)
+            {
+                if (node.Dimensions != default) return;
+                node.Dimensions = ImGui.CalcTextSize(node.Name) + TextOffset * 2;
+            }
+
+            foreach (var node in this.Plugin.Quests.ConsolidationNodes.Values)
+            {
+                if (node.Dimensions != default) return;
+                node.Dimensions = ImGui.CalcTextSize(node.Name) + TextOffset * 2;
+            }
         }
 
         private unsafe void DrawMainWindow() {
@@ -204,7 +227,7 @@ namespace QuestMap {
                             anyChanged = true;
                         }
 
-                        if (ImGui.MenuItem("Condense final MSQ quests (not implemented)", null, ref this.Plugin.Config.CondenseMsq)) {
+                        if (ImGui.MenuItem("Condense final MSQ quests", null, ref this.Plugin.Config.CondenseMsq)) {
                             this._relayout = true;
                             anyChanged = true;
                         }
@@ -270,7 +293,8 @@ namespace QuestMap {
                 clipper.Begin(this.FilteredQuests.Count);
                 while (clipper.Step()) {
                     for (var row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
-                        var (quest, indent, drawItem) = this.FilteredQuests[row];
+                        var (questNode, indent, drawItem) = this.FilteredQuests[row];
+                        var quest = questNode.Quest;
 
                         void DrawSelectable(string name, Quest quest) {
                             var completed = QuestManager.IsQuestComplete(quest.RowId);
@@ -316,7 +340,7 @@ namespace QuestMap {
 
             ImGui.SameLine();
             if (ImGui.BeginChild("quest-map", new Vector2(-1, -1))) {
-                if (this.Quest is null) ImGui.TextUnformatted("Select a quest");
+                if (this.Quest is null) ImGui.TextUnformatted("No quest selected");
                 else if (this.Worker is null || !this.Worker.Task.IsCompleted) ImGui.TextUnformatted("Generating map...");
                 else if (this.Worker.Task.IsCompleted)
                 {
@@ -397,7 +421,7 @@ namespace QuestMap {
             if (quest.Icon != 0) {
                 var header = GetIcon(quest.Icon);
                 if (header != null) {
-                    textWrap = header.Width;
+                    textWrap = header.Width /2f;
                     ImGui.Image(header.ImGuiHandle, new Vector2(header.Width / 2f, header.Height / 2f));
                 }
             }
@@ -567,41 +591,28 @@ namespace QuestMap {
                     ImGui.Image(image.ImGuiHandle, new Vector2(image.Width / 2f, image.Height / 2f));
                     Util.Tooltip(this.Convert(tribe.Name).ToString());
                 }
-
                 ImGui.Separator();
             }
 
-            /* AG TODO: Reimplementation
             var id = quest.RowId & 0xFFFF;
-            var lang = this.Plugin.ClientState.ClientLanguage switch {
-                ClientLanguage.English => Language.English,
-                ClientLanguage.Japanese => Language.Japanese,
-                ClientLanguage.German => Language.German,
-                ClientLanguage.French => Language.French,
-                _ => Language.English,
-            };
-            var path = $"quest/{id.ToString("00000")[..3]}/{quest.Id.RawString.ToLowerInvariant()}";
-            // FIXME: this is gross, but lumina caches incorrectly
-            this.Plugin.DataManager.Excel.RemoveSheetFromCache<QuestData>();
-            var sheet = this.Plugin.DataManager.Excel.GetType()
-                .GetMethod("GetSheet", BindingFlags.Instance | BindingFlags.NonPublic)?
-                // ReSharper disable once ConstantConditionalAccessQualifier
-                .MakeGenericMethod(typeof(QuestData))?
-                // ReSharper disable once ConstantConditionalAccessQualifier
-                .Invoke(this.Plugin.DataManager.Excel, [
-                    path,
-                    lang,
-                    null,
-                ]) as ExcelSheet<QuestData>;
-            // default to english if reflection failed
-            sheet ??= this.Plugin.DataManager.Excel.GetSheet<QuestData>(path);
-            var firstData = sheet?.GetRow(0);
-            if (firstData != null) {
-                ImGui.PushTextWrapPos(textWrap);
-                ImGui.TextUnformatted(this.Convert(firstData.Text).ToString());
-                ImGui.PopTextWrapPos();
+            var path = $"quest/{id.ToString("00000")[..3]}/{quest.Id.ExtractText().ToLowerInvariant()}";
+            var sheet = this.Plugin.DataManager.GetExcelSheet<RawRow>(null, path);
+            if (sheet is not null)
+            {
+                try
+                {
+                    var text = sheet.GetRow(0).ReadStringColumn(1).ExtractText();
+                    ImGui.PushTextWrapPos(textWrap);
+                    ImGui.TextUnformatted(text);
+                    ImGui.PopTextWrapPos();
+                }
+                catch (Exception ex)
+                {
+                    ImGui.PushTextWrapPos(textWrap);
+                    ImGui.TextUnformatted(ex.ToString());
+                    ImGui.PopTextWrapPos();
+                }
             }
-            */
 
             ImGui.Separator();
 
@@ -812,9 +823,10 @@ namespace QuestMap {
                     continue;
                 }
 
-                var quest = (Quest) node.UserData;
+                var questNode = (QuestNode)node.UserData;
+                var quest = questNode.Quest;
 
-                var colour = quest.EventIconType.RowId switch {
+                var colour = quest.Equals(default(Quest)) ? Colours.MsqQuest : quest.EventIconType.RowId switch {
                     1 => Colours.NormalQuest, // normal
                     3 => Colours.MsqQuest, // msq
                     8 => Colours.BlueQuest, // blue
@@ -823,7 +835,7 @@ namespace QuestMap {
                 };
                 var textColour = Colours.Text;
 
-                var completed = QuestManager.IsQuestComplete(quest.RowId);
+                var completed = QuestManager.IsQuestComplete(questNode.Id);
                 if (completed) {
                     colour.W = .5f;
                     textColour = (uint) ((0x80 << 24) | (textColour & 0xFFFFFF));
@@ -831,14 +843,14 @@ namespace QuestMap {
 
                 var end = canvasBottomRight - this.GetBottomRight(node);
 
-                drawn.Add((start, end, quest.RowId));
+                drawn.Add((start, end, questNode.Id));
 
                 if (this.Quest is not null && quest.RowId == this.Quest.Value.RowId) {
                     drawList.AddRect(start - Vector2.One, end + Vector2.One, Colours.Line, 5, ImDrawFlags.RoundCornersAll);
                 }
 
                 drawList.AddRectFilled(start, end, ImGui.GetColorU32(colour), 5, ImDrawFlags.RoundCornersAll);
-                drawList.AddText(start + TextOffset, textColour, this.Convert(quest.Name).ToString());
+                drawList.AddText(start + TextOffset, textColour, questNode.Name);
             }
 
             // HOW ABOUT DRAGGING THE VIEW?
@@ -858,8 +870,9 @@ namespace QuestMap {
             } else {
                 if (!this._viewDrag) {
                     var left = ImGui.IsMouseReleased(ImGuiMouseButton.Left);
+                    var middle = ImGui.IsMouseReleased(ImGuiMouseButton.Middle);
                     var right = ImGui.IsMouseReleased(ImGuiMouseButton.Right);
-                    if (left || right) {
+                    if (left || middle || right) {
                         var mousePos = ImGui.GetMousePos();
                         foreach (var (start, end, id) in drawn) {
                             var inBox = mousePos.X >= start.X && mousePos.X <= end.X && mousePos.Y >= start.Y && mousePos.Y <= end.Y;
@@ -871,8 +884,20 @@ namespace QuestMap {
                                 this.InfoWindows.Add(id);
                             }
 
+                            if (middle)
+                            {
+                                var quest = this.Plugin.DataManager.Excel.GetSheet<Quest>().GetRowOrDefault(id);
+                                if (quest is not null)
+                                {
+                                    this.Quest = quest.Value;
+                                    this._relayout = true;
+                                }
+
+                            }
+
                             if (right) {
-                                unsafe {
+                                unsafe
+                                {
                                     AgentQuestJournal.Instance()->OpenForQuest(id, 1);
                                 }
                             }
