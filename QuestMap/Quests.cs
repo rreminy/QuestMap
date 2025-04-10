@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -36,6 +37,8 @@ namespace QuestMap {
         internal Quests(Plugin plugin) {
             this.Plugin = plugin;
 
+            var excelItems = this.Plugin.DataManager.GetExcelSheet<Item>();
+
             var itemRewards = new Dictionary<uint, List<Item>>();
             var emoteRewards = new Dictionary<uint, Emote>();
             var actionRewards = new Dictionary<uint, Action>();
@@ -46,44 +49,20 @@ namespace QuestMap {
 
             var allQuests = new Dictionary<uint, Quest>();
             foreach (var quest in this.Plugin.DataManager.GetExcelSheet<Quest>()) {
-                if (quest.Name.ByteLength == 0 || quest.RowId == 65536) {
-                    continue;
-                }
-
+                if (quest.Name.ByteLength == 0 || quest.RowId == 65536) continue;
                 allQuests[quest.RowId] = quest;
 
-                if (quest.EmoteReward.RowId != 0) {
-                    emoteRewards[quest.RowId] = quest.EmoteReward.Value!;
-                }
+                if (quest.EmoteReward.RowId != 0) emoteRewards[quest.RowId] = quest.EmoteReward.Value!;
 
-                // AG NOTE: Used to be .ItemReward
-                foreach (var row in quest.Reward.Where(item => item.RowId != 0)) {
-                    var item = this.Plugin.DataManager.GetExcelSheet<Item>().GetRowOrDefault(row.RowId);
-                    if (item == null) continue;
+                ref var items = ref CollectionsMarshal.GetValueRefOrAddDefault(itemRewards, quest.RowId, out var _);
+                items ??= [];
 
-                    List<Item> rewards;
-                    if (itemRewards.TryGetValue(quest.RowId, out var items)) {
-                        rewards = items;
-                    } else {
-                        rewards = [];
-                        itemRewards[quest.RowId] = rewards;
-                    }
-                    rewards.Add(item.Value);
-                }
+                // AG NOTE: .Reward used to be .ItemReward
+                items.AddRange(quest.Reward.Where(row => row.RowId != 0).Select(row => excelItems.GetRowOrDefault(row.RowId)).Where(item => item is not null).Select(item => item!.Value));
+                items.AddRange(quest.OptionalItemReward.Where(item => item.IsValid && item.RowId != 0).Select(item => item.Value));
 
-                foreach (var item in quest.OptionalItemReward.Where(item => item.IsValid && item.RowId != 0).Select(item => item.Value)) {
-                    List<Item> rewards;
-                    if (itemRewards.TryGetValue(quest.RowId, out var items)) {
-                        rewards = items;
-                    } else {
-                        rewards = [];
-                        itemRewards[quest.RowId] = rewards;
-                    }
-                    rewards.Add(item!);
-                }
-
-                if (quest.ActionReward.RowId != 0) {
-                    actionRewards[quest.RowId] = quest.ActionReward.Value!;
+                if (quest.ActionReward.IsValid && quest.ActionReward.RowId != 0) {
+                    actionRewards[quest.RowId] = quest.ActionReward.Value;
                 }
 
                 var instances = this.InstanceUnlocks(quest, linkedInstances);
@@ -94,8 +73,8 @@ namespace QuestMap {
                     }
                 }
 
-                if (quest.BeastTribe.RowId != 0 && !quest.IsRepeatable && quest.BeastReputationRank.RowId == 0) {
-                    beastRewards[quest.RowId] = quest.BeastTribe.Value!;
+                if (!quest.IsRepeatable && quest.BeastReputationRank.RowId == 0 && quest.BeastTribe.IsValid && quest.BeastTribe.RowId != 0) {
+                    beastRewards[quest.RowId] = quest.BeastTribe.Value;
                 }
 
                 var jobReward = this.JobUnlocks(quest);
@@ -167,6 +146,13 @@ namespace QuestMap {
                 AddNode(node);
             }
             */
+
+            foreach (var node in first.Ancestors())
+            {
+                cancel.ThrowIfCancellationRequested();
+                AddNode(node);
+            }
+
 
             foreach (var (sourceId, targetId) in links) {
                 cancel.ThrowIfCancellationRequested();
@@ -258,7 +244,7 @@ namespace QuestMap {
             if (quest.IsRepeatable) return [];
             var unlocks = new HashSet<ContentFinderCondition>();
 
-            if (quest.InstanceContentUnlock.RowId != 0) {
+            if (quest.InstanceContentUnlock.IsValid && quest.InstanceContentUnlock.RowId != 0) {
                 var cfcs = this.Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()
                     .Where(cfc => cfc.Content.RowId == quest.InstanceContentUnlock.RowId && cfc.ContentLinkType == 1)
                     .Where(cfc => cfc.UnlockQuest.IsValid && cfc.UnlockQuest.RowId == 0);
@@ -283,7 +269,7 @@ namespace QuestMap {
         }
 
         private ClassJob? JobUnlocks(Quest quest) {
-            if (quest.ClassJobUnlock.RowId > 0) {
+            if (quest.ClassJobUnlock.IsValid && quest.ClassJobUnlock.RowId != 0) {
                 return quest.ClassJobUnlock.Value;
             }
 
