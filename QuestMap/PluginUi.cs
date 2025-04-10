@@ -17,6 +17,7 @@ using Lumina.Excel.Sheets;
 using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
+using static System.Net.Mime.MediaTypeNames;
 using static Dalamud.Interface.Utility.Raii.ImRaii;
 
 namespace QuestMap {
@@ -598,10 +599,19 @@ namespace QuestMap {
             var sheet = this.Plugin.DataManager.GetExcelSheet<RawRow>(null, path);
             if (sheet is not null)
             {
-                var text = sheet.GetRow(0).ReadStringColumn(1).ExtractText();
-                ImGui.PushTextWrapPos(textWrap);
-                ImGui.TextUnformatted(text);
-                ImGui.PopTextWrapPos();
+                try
+                {
+                    var text = sheet.GetRow(0).ReadStringColumn(1).ExtractText();
+                    ImGui.PushTextWrapPos(textWrap);
+                    ImGui.TextUnformatted(text);
+                    ImGui.PopTextWrapPos();
+                }
+                catch (Exception ex)
+                {
+                    ImGui.PushTextWrapPos(textWrap);
+                    ImGui.TextUnformatted(ex.ToString());
+                    ImGui.PopTextWrapPos();
+                }
             }
 
             ImGui.Separator();
