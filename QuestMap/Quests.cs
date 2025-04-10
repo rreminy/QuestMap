@@ -25,7 +25,8 @@ namespace QuestMap {
     internal class Quests {
         private Plugin Plugin { get; }
 
-        private FrozenDictionary<uint, QuestNode> AllNodes { get; }
+        internal FrozenDictionary<uint, QuestNode> AllNodes { get; }
+        internal FrozenDictionary<uint, QuestNode> ConsolidationNodes { get; }
         internal FrozenDictionary<uint, ImmutableArray<Item>> ItemRewards { get; }
         internal FrozenDictionary<uint, Emote> EmoteRewards { get; }
         internal FrozenDictionary<uint, Action> ActionRewards { get; }
@@ -92,9 +93,8 @@ namespace QuestMap {
 
             var (_, nodes) = QuestNode.BuildTree(allQuests);
             this.AllNodes = nodes.ToFrozenDictionary();
+            this.ConsolidationNodes = CreateMsqConsolidationNodes();
         }
-
-        private static readonly Vector2 TextOffset = new(5, 2);
 
         internal GraphWorker StartGraphRecalculation(Quest quest) {
 
@@ -112,7 +112,7 @@ namespace QuestMap {
             void AddNode(QuestNode node) {
                 if (msaglNodes.ContainsKey(node.Id)) return;
 
-                var dims = ImGui.CalcTextSize(node.Name) + TextOffset * 2;
+                var dims = node.Dimensions;
                 var graphNode = new Node(CurveFactory.CreateRectangle(dims.X, dims.Y, new Point()), node);
                 g.Nodes.Add(graphNode);
                 msaglNodes[node.Id] = graphNode;
@@ -172,48 +172,55 @@ namespace QuestMap {
             return new GraphInfo(g, centre);
         }
 
+        private static FrozenDictionary<uint, QuestNode> CreateMsqConsolidationNodes()
+        {
+            var nodes = new List<QuestNode>()
+            {
+                new(70058, "A Realm Reborn (2.0)"),
+                new(66729, "A Realm Awoken (2.1)"),
+                new(66899, "Through the Maelstrom (2.2)"),
+                new(66996, "Defenders of Eorzea (2.3)"),
+                new(65625, "Dreams of Ice (2.4)"),
+                new(65965, "Before the Fall - Part 1 (2.5)"),
+                new(65964, "Before the Fall - Part 2 (2.55)"),
+                new(67205, "Heavensward (3.0)"),
+                new(67699, "As Goes Light, So Goes Darkness (3.1)"),
+                new(67777, "The Gears of Change (3.2)"),
+                new(67783, "Revenge of the Horde (3.3)"),
+                new(67886, "Soul Surrender (3.4)"),
+                new(67891, "The Far Edge of Fate - Part 1 (3.5)"),
+                new(67895, "The Far Edge of Fate - Part 2 (3.56)"),
+                new(68089, "Stormblood (4.0)"),
+                new(68508, "The Legend Returns (4.1)"),
+                new(68565, "Rise of a New Sun (4.2)"),
+                new(68612, "Under the Moonlight (4.3)"),
+                new(68685, "Prelude in Violet (4.4)"),
+                new(68719, "A Requiem for Heroes - Part 1 (4.5)"),
+                new(68721, "A Requiem for Heroes - Part 2 (4.56)"),
+                new(69190, "Shadowbringers (5.0)"),
+                new(69218, "Vows of Virtue, Deeds of Cruelty (5.1)"),
+                new(69306, "Echoes of a Fallen Star (5.2)"),
+                new(69318, "Reflections in Crystal (5.3)"),
+                new(69552, "Futures Rewritten (5.4)"),
+                new(69599, "Death Unto Dawn - Part 1 (5.5)"),
+                new(69602, "Death Unto Dawn - Part 2 (5.55)"),
+                new(70000, "Endwalker (6.0)"),
+                new(70062, "Newfound Adventure (6.1)"),
+                new(70136, "Buried Memory (6.2)"),
+                new(70214, "Gods Revel, Lands Tremble (6.3)"),
+                new(70279, "The Dark Throne (6.4)"),
+                new(70286, "Growing Light (6.5)"),
+                new(70289, "The Coming Dawn (6.55)"),
+                new(70495, "Dawntrail (7.0)"),
+                new(70786, "Crossroads (7.1)"),
+                new(70842, "Seekers of Eternity (7.2)"),
+            };
+            return nodes.ToFrozenDictionary(node => node.Id);
+        }
+
         private QuestNode? ConsolidateMsq(QuestNode quest) {
             if (!this.Plugin.Config.CondenseMsq) return null;
-            var name = quest.Id switch {
-                70058 => "A Realm Reborn (2.0)",
-                66729 => "A Realm Awoken (2.1)",
-                66899 => "Through the Maelstrom (2.2)",
-                66996 => "Defenders of Eorzea (2.3)",
-                65625 => "Dreams of Ice (2.4)",
-                65965 => "Before the Fall - Part 1 (2.5)",
-                65964 => "Before the Fall - Part 2 (2.55)",
-                67205 => "Heavensward (3.0)",
-                67699 => "As Goes Light, So Goes Darkness (3.1)",
-                67777 => "The Gears of Change (3.2)",
-                67783 => "Revenge of the Horde (3.3)",
-                67886 => "Soul Surrender (3.4)",
-                67891 => "The Far Edge of Fate - Part 1 (3.5)",
-                67895 => "The Far Edge of Fate - Part 2 (3.56)",
-                68089 => "Stormblood (4.0)",
-                68508 => "The Legend Returns (4.1)",
-                68565 => "Rise of a New Sun (4.2)",
-                68612 => "Under the Moonlight (4.3)",
-                68685 => "Prelude in Violet (4.4)",
-                68719 => "A Requiem for Heroes - Part 1 (4.5)",
-                68721 => "A Requiem for Heroes - Part 2 (4.56)",
-                69190 => "Shadowbringers (5.0)",
-                69218 => "Vows of Virtue, Deeds of Cruelty (5.1)",
-                69306 => "Echoes of a Fallen Star (5.2)",
-                69318 => "Reflections in Crystal (5.3)",
-                69552 => "Futures Rewritten (5.4)",
-                69599 => "Death Unto Dawn - Part 1 (5.5)",
-                69602 => "Death Unto Dawn - Part 2 (5.55)",
-                70000 => "Endwalker (6.0)",
-                70062 => "Newfound Adventure (6.1)",
-                70136 => "Buried Memory (6.2)",
-                70214 => "Gods Revel, Lands Tremble (6.3)",
-                70279 => "The Dark Throne (6.4)",
-                70286 => "Growing Light (6.5)",
-                70289 => "The Coming Dawn (6.55)",
-                70495 => "Dawntrail (7.0)",
-                _ => null,
-            };
-            return name is null ? null : new(quest.Id, name);
+            return this.ConsolidationNodes.GetValueOrDefault(quest.Id);
         }
 
         private HashSet<ContentFinderCondition> InstanceUnlocks(Quest quest, HashSet<ContentFinderCondition> others) {

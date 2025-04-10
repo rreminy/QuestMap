@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using Lumina.Excel.Sheets;
 
@@ -11,6 +12,7 @@ namespace QuestMap {
 
         internal uint Id { get; }
         internal string Name => this._name ??= this.Quest.Name.ExtractText();
+        internal Vector2 Dimensions { get; set; }
         internal List<QuestNode> Parents { get; set; }
         internal Quest Quest { get; private set; }
         internal List<QuestNode> Children { get; } = [];
