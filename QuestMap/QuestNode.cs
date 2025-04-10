@@ -6,25 +6,29 @@ using System.Runtime.InteropServices;
 using Lumina.Excel.Sheets;
 
 namespace QuestMap {
-    internal class Node<T> {
-        internal uint Id { get; }
-        internal List<Node<T>> Parents { get; set; }
-        internal T Value { get; set; }
-        internal List<Node<T>> Children { get; } = [];
+    internal class QuestNode {
+        private string? _name;
 
-        internal Node(List<Node<T>> parents, uint id, T value) {
+        internal uint Id { get; }
+        internal string Name => this._name ??= this.Quest.Name.ExtractText();
+        internal List<QuestNode> Parents { get; set; }
+        internal Quest Quest { get; private set; }
+        internal List<QuestNode> Children { get; } = [];
+
+        internal QuestNode(List<QuestNode> parents, uint id, Quest quest) {
             this.Id = id;
             this.Parents = parents;
-            this.Value = value;
+            this.Quest = quest;
         }
 
-        private Node(uint id) {
+        public QuestNode(uint id, string? name = null) {
             this.Id = id;
+            this._name = name;
             this.Parents = [];
-            this.Value = default!;
+            this.Quest = default!;
         }
 
-        internal Node<T>? Find(uint id) {
+        internal QuestNode? Find(uint id) {
             if (this.Id == id) {
                 return this;
             }
@@ -39,8 +43,8 @@ namespace QuestMap {
             return null;
         }
 
-        internal IEnumerable<Node<T>> Ancestors() {
-            var parents = new Stack<Node<T>>();
+        internal IEnumerable<QuestNode> Ancestors() {
+            var parents = new Stack<QuestNode>();
             foreach (var parent in this.Parents) {
                 parents.Push(parent);
             }
@@ -53,36 +57,44 @@ namespace QuestMap {
             }
         }
 
-        internal IEnumerable<Node<T>> Ancestors(Func<T, T?> consolidator) {
-            var parents = new Stack<Node<T>>();
+        internal IEnumerable<QuestNode> Ancestors(Func<QuestNode, QuestNode?> consolidator) {
+            var parents = new Stack<QuestNode>();
             foreach (var parent in this.Parents) {
-                var consolidated = consolidator(parent.Value);
-                parents.Push(consolidated == null
-                    ? parent
-                    : new Node<T>([], parent.Id, consolidated) {
-                        Children = { this },
-                    });
+                var consolidated = consolidator(parent);
+                if (consolidated is not null)
+                {
+                    consolidated.Children.Add(consolidated);
+                    parents.Push(consolidated);
+                }
+                else
+                {
+                    parents.Push(parent);
+                }
             }
 
             while (parents.TryPop(out var next)) {
                 yield return next;
                 foreach (var parent in next.Parents) {
-                    var consolidated = consolidator(parent.Value);
-                    parents.Push(consolidated == null
-                        ? parent
-                        : new Node<T>([], parent.Id, consolidated) {
-                            Children = { next },
-                        });
+                    var consolidated = consolidator(parent);
+                    if (consolidated is not null)
+                    {
+                        consolidated.Children.Add(consolidated);
+                        parents.Push(consolidated);
+                    }
+                    else
+                    {
+                        parents.Push(parent);
+                    }
                 }
             }
         }
 
         public struct TraverseEnumerator
         {
-            private readonly Stack<Node<T>> _stack = new();
-            public Node<T> Current { readonly get; private set; } = null!;
+            private readonly Stack<QuestNode> _stack = new();
+            public QuestNode Current { readonly get; private set; } = null!;
 
-            public TraverseEnumerator(Node<T> start)
+            public TraverseEnumerator(QuestNode start)
             {
                 this._stack.Push(start); 
             }
@@ -100,30 +112,15 @@ namespace QuestMap {
             }
         }
 
-        public struct TraverseEnumerable(Node<T> start)
+        public struct TraverseEnumerable(QuestNode start)
         {
             public readonly TraverseEnumerator GetEnumerator() => new(start);
         }
 
         internal TraverseEnumerable Traverse() => new(this);
 
-        /*
-        internal IEnumerable<Node<T>> Traverse() {
-            var stack = new Stack<Node<T>>();
-            stack.Push(this);
-            while (stack.TryPop(out var next)) {
-                yield return next;
-
-                var children = next.Children;
-                for (var index = 0; index < children.Count; index++) stack.Push(children[index]);
-
-                //foreach (var child in next.Children) stack.Push(child);
-            }
-        }
-        */
-
-        internal IEnumerable<Tuple<Node<T>, uint>> TraverseWithDepth() {
-            var stack = new Stack<Tuple<Node<T>, uint>>();
+        internal IEnumerable<Tuple<QuestNode, uint>> TraverseWithDepth() {
+            var stack = new Stack<Tuple<QuestNode, uint>>();
             stack.Push(Tuple.Create(this, (uint) 0));
             while (stack.TryPop(out var next)) {
                 yield return next;
@@ -133,16 +130,16 @@ namespace QuestMap {
             }
         }
 
-        internal static (List<Node<Quest>>, Dictionary<uint, Node<Quest>>) BuildTree(Dictionary<uint, Quest> layouts) {
-            var lookup = new Dictionary<uint, Node<Quest>>();
-            var rootNodes = new List<Node<Quest>>();
-            var allNodes = new Dictionary<uint, Node<Quest>>();
+        internal static (List<QuestNode>, Dictionary<uint, QuestNode>) BuildTree(Dictionary<uint, Quest> layouts) {
+            var lookup = new Dictionary<uint, QuestNode>();
+            var rootNodes = new List<QuestNode>();
+            var allNodes = new Dictionary<uint, QuestNode>();
 
             foreach (var item in layouts) {
                 if (lookup.TryGetValue(item.Key, out var ourNode)) {
-                    ourNode.Value = item.Value;
+                    ourNode.Quest = item.Value;
                 } else {
-                    ourNode = new Node<Quest>([], item.Key, item.Value);
+                    ourNode = new QuestNode([], item.Key, item.Value);
                     lookup[item.Key] = ourNode;
                     allNodes[item.Key] = ourNode;
                 }
@@ -154,7 +151,7 @@ namespace QuestMap {
                     foreach (var prev in previous) {
                         if (!lookup.TryGetValue(prev.RowId, out var parentNode)) {
                             // create preliminary parent
-                            parentNode = new Node<Quest>(prev.RowId);
+                            parentNode = new QuestNode(prev.RowId);
                             lookup[prev.RowId] = parentNode;
                             allNodes[prev.RowId] = parentNode;
                         }
@@ -170,7 +167,7 @@ namespace QuestMap {
     }
 
     internal static class NodeExt {
-        internal static Node<T>? Find<T>(this IEnumerable<Node<T>> nodes, uint id) {
+        internal static QuestNode? Find(this IEnumerable<QuestNode> nodes, uint id) {
             foreach (var node in nodes) {
                 var found = node.Find(id);
 

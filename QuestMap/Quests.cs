@@ -25,7 +25,7 @@ namespace QuestMap {
     internal class Quests {
         private Plugin Plugin { get; }
 
-        private FrozenDictionary<uint, Node<Quest>> AllNodes { get; }
+        private FrozenDictionary<uint, QuestNode> AllNodes { get; }
         internal FrozenDictionary<uint, ImmutableArray<Item>> ItemRewards { get; }
         internal FrozenDictionary<uint, Emote> EmoteRewards { get; }
         internal FrozenDictionary<uint, Action> ActionRewards { get; }
@@ -90,7 +90,7 @@ namespace QuestMap {
             this.BeastRewards = beastRewards.ToFrozenDictionary();
             this.JobRewards = jobRewards.ToFrozenDictionary();
 
-            var (_, nodes) = Node<Quest>.BuildTree(allQuests);
+            var (_, nodes) = QuestNode.BuildTree(allQuests);
             this.AllNodes = nodes.ToFrozenDictionary();
         }
 
@@ -109,15 +109,15 @@ namespace QuestMap {
             var links = new List<(uint, uint)>();
             var g = new GeometryGraph();
 
-            void AddNode(Node<Quest> node) {
+            void AddNode(QuestNode node) {
                 if (msaglNodes.ContainsKey(node.Id)) return;
 
-                var dims = ImGui.CalcTextSize(node.Value.Name.ExtractText()) + TextOffset * 2;
-                var graphNode = new Node(CurveFactory.CreateRectangle(dims.X, dims.Y, new Point()), node.Value);
+                var dims = ImGui.CalcTextSize(node.Name) + TextOffset * 2;
+                var graphNode = new Node(CurveFactory.CreateRectangle(dims.X, dims.Y, new Point()), node);
                 g.Nodes.Add(graphNode);
                 msaglNodes[node.Id] = graphNode;
 
-                IEnumerable<Node<Quest>> parents;
+                IEnumerable<QuestNode> parents;
                 if (this.Plugin.Config.ShowRedundantArrows) {
                     parents = node.Parents;
                 } else {
@@ -140,19 +140,10 @@ namespace QuestMap {
                 AddNode(node);
             }
 
-            /* AG TODO: Reimplement this (MSQ Consolidation)
             foreach (var node in first.Ancestors(this.ConsolidateMsq)) {
                 cancel.ThrowIfCancellationRequested();
                 AddNode(node);
             }
-            */
-
-            foreach (var node in first.Ancestors())
-            {
-                cancel.ThrowIfCancellationRequested();
-                AddNode(node);
-            }
-
 
             foreach (var (sourceId, targetId) in links) {
                 cancel.ThrowIfCancellationRequested();
@@ -181,12 +172,9 @@ namespace QuestMap {
             return new GraphInfo(g, centre);
         }
 
-        private Quest? ConsolidateMsq(Quest quest) {
-            if (!this.Plugin.Config.CondenseMsq) {
-                return null;
-            }
-
-            var name = quest.RowId switch {
+        private QuestNode? ConsolidateMsq(QuestNode quest) {
+            if (!this.Plugin.Config.CondenseMsq) return null;
+            var name = quest.Id switch {
                 70058 => "A Realm Reborn (2.0)",
                 66729 => "A Realm Awoken (2.1)",
                 66899 => "Through the Maelstrom (2.2)",
@@ -225,19 +213,7 @@ namespace QuestMap {
                 70495 => "Dawntrail (7.0)",
                 _ => null,
             };
-
-            if (name == null) {
-                return null;
-            }
-
-            // AG FIXME: Cannot be done, Quest is not reflection-friendly
-            var newQuest = new Quest();
-            foreach (var property in newQuest.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public)) {
-                property.SetValue(newQuest, property.GetValue(quest));
-            }
-            //newQuest.Name = new Lumina.Text.SeString($"{name} MSQ");
-
-            return newQuest;
+            return name is null ? null : new(quest.Id, name);
         }
 
         private HashSet<ContentFinderCondition> InstanceUnlocks(Quest quest, HashSet<ContentFinderCondition> others) {

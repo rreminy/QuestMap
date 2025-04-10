@@ -204,7 +204,7 @@ namespace QuestMap {
                             anyChanged = true;
                         }
 
-                        if (ImGui.MenuItem("Condense final MSQ quests (not implemented)", null, ref this.Plugin.Config.CondenseMsq)) {
+                        if (ImGui.MenuItem("Condense final MSQ quests", null, ref this.Plugin.Config.CondenseMsq)) {
                             this._relayout = true;
                             anyChanged = true;
                         }
@@ -316,7 +316,7 @@ namespace QuestMap {
 
             ImGui.SameLine();
             if (ImGui.BeginChild("quest-map", new Vector2(-1, -1))) {
-                if (this.Quest is null) ImGui.TextUnformatted("Select a quest");
+                if (this.Quest is null) ImGui.TextUnformatted("No quest selected");
                 else if (this.Worker is null || !this.Worker.Task.IsCompleted) ImGui.TextUnformatted("Generating map...");
                 else if (this.Worker.Task.IsCompleted)
                 {
@@ -812,9 +812,10 @@ namespace QuestMap {
                     continue;
                 }
 
-                var quest = (Quest) node.UserData;
+                var questNode = (QuestNode)node.UserData;
+                var quest = questNode.Quest;
 
-                var colour = quest.EventIconType.RowId switch {
+                var colour = quest.Equals(default(Quest)) ? Colours.MsqQuest : quest.EventIconType.RowId switch {
                     1 => Colours.NormalQuest, // normal
                     3 => Colours.MsqQuest, // msq
                     8 => Colours.BlueQuest, // blue
@@ -823,7 +824,7 @@ namespace QuestMap {
                 };
                 var textColour = Colours.Text;
 
-                var completed = QuestManager.IsQuestComplete(quest.RowId);
+                var completed = QuestManager.IsQuestComplete(questNode.Id);
                 if (completed) {
                     colour.W = .5f;
                     textColour = (uint) ((0x80 << 24) | (textColour & 0xFFFFFF));
@@ -838,7 +839,7 @@ namespace QuestMap {
                 }
 
                 drawList.AddRectFilled(start, end, ImGui.GetColorU32(colour), 5, ImDrawFlags.RoundCornersAll);
-                drawList.AddText(start + TextOffset, textColour, this.Convert(quest.Name).ToString());
+                drawList.AddText(start + TextOffset, textColour, questNode.Name);
             }
 
             // HOW ABOUT DRAGGING THE VIEW?
@@ -858,8 +859,9 @@ namespace QuestMap {
             } else {
                 if (!this._viewDrag) {
                     var left = ImGui.IsMouseReleased(ImGuiMouseButton.Left);
+                    var middle = ImGui.IsMouseReleased(ImGuiMouseButton.Middle);
                     var right = ImGui.IsMouseReleased(ImGuiMouseButton.Right);
-                    if (left || right) {
+                    if (left || middle || right) {
                         var mousePos = ImGui.GetMousePos();
                         foreach (var (start, end, id) in drawn) {
                             var inBox = mousePos.X >= start.X && mousePos.X <= end.X && mousePos.Y >= start.Y && mousePos.Y <= end.Y;
@@ -871,8 +873,20 @@ namespace QuestMap {
                                 this.InfoWindows.Add(id);
                             }
 
+                            if (middle)
+                            {
+                                var quest = this.Plugin.DataManager.Excel.GetSheet<Quest>().GetRowOrDefault(id);
+                                if (quest is not null)
+                                {
+                                    this.Quest = quest.Value;
+                                    this._relayout = true;
+                                }
+
+                            }
+
                             if (right) {
-                                unsafe {
+                                unsafe
+                                {
                                     AgentQuestJournal.Instance()->OpenForQuest(id, 1);
                                 }
                             }
