@@ -12,10 +12,12 @@ using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
+using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Microsoft.Msagl.Core.Geometry;
 using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
+using static Dalamud.Interface.Utility.Raii.ImRaii;
 
 namespace QuestMap {
     internal class PluginUi : IDisposable {
@@ -418,7 +420,7 @@ namespace QuestMap {
             if (quest.Icon != 0) {
                 var header = GetIcon(quest.Icon);
                 if (header != null) {
-                    textWrap = header.Width;
+                    textWrap = header.Width /2f;
                     ImGui.Image(header.ImGuiHandle, new Vector2(header.Width / 2f, header.Height / 2f));
                 }
             }
@@ -588,41 +590,19 @@ namespace QuestMap {
                     ImGui.Image(image.ImGuiHandle, new Vector2(image.Width / 2f, image.Height / 2f));
                     Util.Tooltip(this.Convert(tribe.Name).ToString());
                 }
-
                 ImGui.Separator();
             }
 
-            /* AG TODO: Reimplementation
             var id = quest.RowId & 0xFFFF;
-            var lang = this.Plugin.ClientState.ClientLanguage switch {
-                ClientLanguage.English => Language.English,
-                ClientLanguage.Japanese => Language.Japanese,
-                ClientLanguage.German => Language.German,
-                ClientLanguage.French => Language.French,
-                _ => Language.English,
-            };
-            var path = $"quest/{id.ToString("00000")[..3]}/{quest.Id.RawString.ToLowerInvariant()}";
-            // FIXME: this is gross, but lumina caches incorrectly
-            this.Plugin.DataManager.Excel.RemoveSheetFromCache<QuestData>();
-            var sheet = this.Plugin.DataManager.Excel.GetType()
-                .GetMethod("GetSheet", BindingFlags.Instance | BindingFlags.NonPublic)?
-                // ReSharper disable once ConstantConditionalAccessQualifier
-                .MakeGenericMethod(typeof(QuestData))?
-                // ReSharper disable once ConstantConditionalAccessQualifier
-                .Invoke(this.Plugin.DataManager.Excel, [
-                    path,
-                    lang,
-                    null,
-                ]) as ExcelSheet<QuestData>;
-            // default to english if reflection failed
-            sheet ??= this.Plugin.DataManager.Excel.GetSheet<QuestData>(path);
-            var firstData = sheet?.GetRow(0);
-            if (firstData != null) {
+            var path = $"quest/{id.ToString("00000")[..3]}/{quest.Id.ExtractText().ToLowerInvariant()}";
+            var sheet = this.Plugin.DataManager.GetExcelSheet<RawRow>(null, path);
+            if (sheet is not null)
+            {
+                var text = sheet.GetRow(0).ReadStringColumn(1).ExtractText();
                 ImGui.PushTextWrapPos(textWrap);
-                ImGui.TextUnformatted(this.Convert(firstData.Text).ToString());
+                ImGui.TextUnformatted(text);
                 ImGui.PopTextWrapPos();
             }
-            */
 
             ImGui.Separator();
 
