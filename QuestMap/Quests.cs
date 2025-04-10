@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
@@ -24,10 +25,10 @@ namespace QuestMap {
         private Plugin Plugin { get; }
 
         private FrozenDictionary<uint, Node<Quest>> AllNodes { get; }
-        internal FrozenDictionary<uint, List<Item>> ItemRewards { get; }
+        internal FrozenDictionary<uint, ImmutableArray<Item>> ItemRewards { get; }
         internal FrozenDictionary<uint, Emote> EmoteRewards { get; }
         internal FrozenDictionary<uint, Action> ActionRewards { get; }
-        internal FrozenDictionary<uint, HashSet<ContentFinderCondition>> InstanceRewards { get; }
+        internal FrozenDictionary<uint, FrozenSet<ContentFinderCondition>> InstanceRewards { get; }
         internal FrozenDictionary<uint, BeastTribe> BeastRewards { get; }
         internal FrozenDictionary<uint, ClassJob> JobRewards { get; }
         private LayoutAlgorithmSettings LayoutSettings { get; } = new SugiyamaLayoutSettings();
@@ -67,7 +68,6 @@ namespace QuestMap {
                         rewards = [];
                         itemRewards[quest.RowId] = rewards;
                     }
-
                     rewards.Add(item.Value);
                 }
 
@@ -104,10 +104,10 @@ namespace QuestMap {
                 }
             }
 
-            this.ItemRewards = itemRewards.ToFrozenDictionary();
+            this.ItemRewards = itemRewards.ToFrozenDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             this.EmoteRewards = emoteRewards.ToFrozenDictionary();
             this.ActionRewards = actionRewards.ToFrozenDictionary();
-            this.InstanceRewards = instanceRewards.ToFrozenDictionary();
+            this.InstanceRewards = instanceRewards.ToFrozenDictionary(kvp => kvp.Key, kvp => kvp.Value.ToFrozenSet());
             this.BeastRewards = beastRewards.ToFrozenDictionary();
             this.JobRewards = jobRewards.ToFrozenDictionary();
 
