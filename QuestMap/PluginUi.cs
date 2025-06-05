@@ -389,6 +389,17 @@ namespace QuestMap {
             return false;
         }
 
+        public void ShowInfo(Quest quest) => this.InfoWindows.Add(quest.RowId);
+        public bool ShowInfo(uint questId)
+        {
+            if (this.Plugin.Quests.AllNodes.ContainsKey(questId))
+            {
+                this.InfoWindows.Add(questId);
+                return true;
+            }
+            return false;
+        }
+
         private void DrawInfoWindows() {
             var remove = 0u;
 

@@ -18,6 +18,9 @@ namespace QuestMap {
         internal ICommandManager CommandManager { get; init; } = null!;
 
         [PluginService]
+        internal IChatGui Chat { get; init; } = default!;
+
+        [PluginService]
         internal IDataManager DataManager { get; init; } = null!;
 
         [PluginService]
