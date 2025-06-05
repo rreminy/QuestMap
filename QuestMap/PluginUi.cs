@@ -662,6 +662,7 @@ namespace QuestMap {
             if (Util.IconButton(FontAwesomeIcon.ProjectDiagram)) {
                 this.Quest = quest;
                 this._relayout = true;
+                this.Show = true;
             }
 
             Util.Tooltip("Show quest graph");
