@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using Dalamud.Game.Command;
+using Lumina.Excel.Sheets;
 
 namespace QuestMap {
     internal class Commands : IDisposable {
@@ -8,9 +10,7 @@ namespace QuestMap {
         internal Commands(Plugin plugin) {
             this.Plugin = plugin;
 
-            this.Plugin.CommandManager.AddHandler("/quests", new CommandInfo(this.OnCommand) {
-                HelpMessage = "Show Quest Map",
-            });
+            this.Plugin.CommandManager.AddHandler("/quests", new CommandInfo(this.OnCommand) { HelpMessage = "Show Quest Map" });
         }
 
         public void Dispose() {
@@ -18,7 +18,22 @@ namespace QuestMap {
         }
 
         private void OnCommand(string command, string args) {
-            this.Plugin.Ui.Show ^= true;
+            if (string.IsNullOrWhiteSpace(args))
+            {
+                this.Plugin.Ui.Show ^= true;
+            }
+            else
+            {
+                if (uint.TryParse(args, out var questId))
+                {
+                    this.Plugin.Ui.ShowQuest(questId);
+                }
+                else
+                {
+                    var node = this.Plugin.Quests.AllNodes.Values.FirstOrDefault(node => node.Name.Equals(args, StringComparison.InvariantCultureIgnoreCase));
+                    if (node is not null) this.Plugin.Ui.ShowQuest(node.Quest);
+                }
+            }
         }
     }
 }

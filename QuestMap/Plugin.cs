@@ -33,6 +33,7 @@ namespace QuestMap {
         internal Quests Quests { get; }
         internal PluginUi Ui { get; }
         private Commands Commands { get; }
+        private Ipc Ipc { get; }
 
         public Plugin(IDalamudPluginInterface pluginInterface) {
             pluginInterface.Inject(this);
@@ -42,9 +43,11 @@ namespace QuestMap {
             this.Ui = new PluginUi(this);
 
             this.Commands = new Commands(this);
+            this.Ipc = new Ipc(this);
         }
 
         public void Dispose() {
+            this.Ipc.Dispose();
             this.Commands.Dispose();
             this.Ui.Dispose();
         }

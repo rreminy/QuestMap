@@ -372,6 +372,23 @@ namespace QuestMap {
             ImGui.End();
         }
 
+        public void ShowQuest(Quest quest)
+        {
+            this.Quest = quest;
+            this.Show = true;
+            this._relayout = true;
+        }
+
+        public bool ShowQuest(uint questId)
+        {
+            if (this.Plugin.Quests.AllNodes.TryGetValue(questId, out var node))
+            {
+                this.ShowQuest(node.Quest);
+                return true;
+            }
+            return false;
+        }
+
         private void DrawInfoWindows() {
             var remove = 0u;
 
