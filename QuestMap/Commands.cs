@@ -27,6 +27,8 @@ namespace QuestMap {
             {
                 if (uint.TryParse(args, out var questId))
                 {
+                    if (questId < 65536)
+                        questId += 65536;
                     this.Plugin.Ui.ShowQuest(questId);
                 }
                 else
@@ -47,6 +49,8 @@ namespace QuestMap {
             {
                 if (uint.TryParse(args, out var questId))
                 {
+                    if (questId < 65536)
+                        questId += 65536;
                     this.Plugin.Ui.ShowInfo(questId);
                 }
                 else
