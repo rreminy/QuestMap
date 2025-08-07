@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Microsoft.Msagl.Core;
