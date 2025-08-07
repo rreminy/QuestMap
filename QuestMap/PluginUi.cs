@@ -11,7 +11,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using Lumina.Excel;
 using Lumina.Excel.Sheets;
 using Microsoft.Msagl.Core.Geometry;
@@ -19,6 +19,7 @@ using Microsoft.Msagl.Core.Geometry.Curves;
 using Microsoft.Msagl.Core.Layout;
 using static System.Net.Mime.MediaTypeNames;
 using static Dalamud.Interface.Utility.Raii.ImRaii;
+using Dalamud.Interface.Utility.Raii;
 
 namespace QuestMap {
     internal class PluginUi : IDisposable {
@@ -215,24 +216,24 @@ namespace QuestMap {
                     var anyChanged = false;
 
                     if (ImGui.BeginMenu("Quest list")) {
-                        anyChanged |= ImGui.MenuItem("Show completed quests", null, ref this.Plugin.Config.ShowCompleted);
-                        anyChanged |= ImGui.MenuItem("Show seasonal quests", null, ref this.Plugin.Config.ShowSeasonal);
+                        anyChanged |= ImGui.MenuItem("Show completed quests", ImU8String.Empty, ref this.Plugin.Config.ShowCompleted);
+                        anyChanged |= ImGui.MenuItem("Show seasonal quests", ImU8String.Empty, ref this.Plugin.Config.ShowSeasonal);
 
                         ImGui.EndMenu();
                     }
 
                     if (ImGui.BeginMenu("Quest map")) {
-                        if (ImGui.MenuItem("Show arrowheads", null, ref this.Plugin.Config.ShowArrowheads)) {
+                        if (ImGui.MenuItem("Show arrowheads", ImU8String.Empty, ref this.Plugin.Config.ShowArrowheads)) {
                             this._relayout = true;
                             anyChanged = true;
                         }
 
-                        if (ImGui.MenuItem("Condense final MSQ quests", null, ref this.Plugin.Config.CondenseMsq)) {
+                        if (ImGui.MenuItem("Condense final MSQ quests", ImU8String.Empty, ref this.Plugin.Config.CondenseMsq)) {
                             this._relayout = true;
                             anyChanged = true;
                         }
 
-                        if (ImGui.MenuItem("Show redundant arrows", null, ref this.Plugin.Config.ShowRedundantArrows)) {
+                        if (ImGui.MenuItem("Show redundant arrows", ImU8String.Empty, ref this.Plugin.Config.ShowRedundantArrows)) {
                             this._relayout = true;
                             anyChanged = true;
                         }
@@ -246,7 +247,7 @@ namespace QuestMap {
                         }
 
                         foreach (var vis in (Visibility[]) Enum.GetValues(typeof(Visibility))) {
-                            if (!ImGui.MenuItem($"{vis}##{id}", null, visibility == vis)) {
+                            if (!ImGui.MenuItem($"{vis}##{id}", ImU8String.Empty, visibility == vis)) {
                                 continue;
                             }
 
@@ -285,10 +286,7 @@ namespace QuestMap {
             }
 
             if (ImGui.BeginChild("quest-list", new Vector2(ImGui.GetContentRegionAvail().X * .25f, -1), false, ImGuiWindowFlags.HorizontalScrollbar)) {
-                ImGuiListClipperPtr clipper;
-                unsafe {
-                    clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
-                }
+                var clipper = new ImGuiListClipper();
 
                 clipper.Begin(this.FilteredQuests.Count);
                 while (clipper.Step()) {
@@ -322,7 +320,7 @@ namespace QuestMap {
                         }
 
                         if (indent) {
-                            ImGui.TreePush();
+                            ImGui.TreePush(ImU8String.Empty);
                         }
 
                         DrawSelectable(drawItem, quest);
@@ -332,6 +330,7 @@ namespace QuestMap {
                         }
                     }
                 }
+                clipper.End();
 
                 clipper.Destroy();
 
@@ -450,7 +449,7 @@ namespace QuestMap {
                 var header = GetIcon(quest.Icon);
                 if (header != null) {
                     textWrap = header.Width /2f;
-                    ImGui.Image(header.ImGuiHandle, new Vector2(header.Width / 2f, header.Height / 2f));
+                    ImGui.Image(header.Handle, new Vector2(header.Width / 2f, header.Height / 2f));
                 }
             }
 
@@ -496,7 +495,7 @@ namespace QuestMap {
                             ImGui.SetCursorPosY(originalY + (maxHeight - image.Height) / 2f);
                         }
 
-                        ImGui.Image(image.ImGuiHandle, new Vector2(image.Width / 2f, image.Height / 2f));
+                        ImGui.Image(image.Handle, new Vector2(image.Width / 2f, image.Height / 2f));
                         Util.Tooltip(name.ToString());
                     }
 
@@ -596,7 +595,7 @@ namespace QuestMap {
                     if (icon > 0) {
                         var image = GetIcon(icon);
                         if (image != null) {
-                            ImGui.Image(image.ImGuiHandle, new Vector2(image.Width / 2f, image.Height / 2f));
+                            ImGui.Image(image.Handle, new Vector2(image.Width / 2f, image.Height / 2f));
                             Util.Tooltip(this.Convert(instance.Name).ToString());
                         }
                     } else {
@@ -616,7 +615,7 @@ namespace QuestMap {
 
                 var image = GetIcon(tribe.Icon);
                 if (image != null) {
-                    ImGui.Image(image.ImGuiHandle, new Vector2(image.Width / 2f, image.Height / 2f));
+                    ImGui.Image(image.Handle, new Vector2(image.Width / 2f, image.Height / 2f));
                     Util.Tooltip(this.Convert(tribe.Name).ToString());
                 }
                 ImGui.Separator();
@@ -969,8 +968,6 @@ namespace QuestMap {
 
             return se;
         }
-
-        private SeString Convert(Lumina.Text.SeString lumina) => this.Convert(lumina.ToDalamudString());
 
         private SeString Convert(Lumina.Text.ReadOnly.ReadOnlySeString lumina) => this.Convert(lumina.ToDalamudString());
     }
