@@ -286,7 +286,7 @@ namespace QuestMap {
             }
 
             if (ImGui.BeginChild("quest-list", new Vector2(ImGui.GetContentRegionAvail().X * .25f, -1), false, ImGuiWindowFlags.HorizontalScrollbar)) {
-                var clipper = new ImGuiListClipper();
+                var clipper = ImGui.ImGuiListClipper();
 
                 clipper.Begin(this.FilteredQuests.Count);
                 while (clipper.Step()) {
@@ -320,7 +320,7 @@ namespace QuestMap {
                         }
 
                         if (indent) {
-                            ImGui.TreePush(ImU8String.Empty);
+                            ImGui.TreePush($"indent-{quest.Id}");
                         }
 
                         DrawSelectable(drawItem, quest);
