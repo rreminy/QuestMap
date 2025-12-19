@@ -85,7 +85,7 @@ namespace QuestMap {
                     }
 
                     if (!this.Plugin.Config.ShowSeasonal && quest.Festival.RowId != 0) {
-                        return false;
+                        // return false; // TODO: Fix this https://discord.com/channels/581875019861328007/653504487352303619/1451691977945911480
                     }
 
                     var completed = QuestManager.IsQuestComplete(quest.RowId);
