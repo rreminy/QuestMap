@@ -230,7 +230,7 @@ namespace QuestMap {
             if (quest.InstanceContentUnlock.IsValid && quest.InstanceContentUnlock.RowId != 0) {
                 var cfcs = this.Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()
                     .Where(cfc => cfc.Content.RowId == quest.InstanceContentUnlock.RowId && cfc.ContentLinkType == 1)
-                    .Where(cfc => cfc.UnlockQuest.IsValid && cfc.UnlockQuest.RowId == 0);
+                    .Where(cfc => cfc.UnlockCriteria.GetValueOrDefault<Quest>() is not null);
                 foreach (var cfc in cfcs) {
                     unlocks.Add(cfc);
                 }
@@ -242,7 +242,7 @@ namespace QuestMap {
                 if (ins.StartsWith("INSTANCEDUNGEON"))
                 {
                     var cfc = this.Plugin.DataManager.GetExcelSheet<ContentFinderCondition>()!.FirstOrDefault(cfc => cfc.Content.RowId == arg && cfc.ContentLinkType == 1);
-                    if (cfc.RowId == 0 || cfc.UnlockQuest.RowId != 0 || others.Contains(cfc)) continue;
+                    if (cfc.RowId == 0 || cfc.UnlockCriteria.RowId != 0 || others.Contains(cfc)) continue;
                     if (questParams.Any(param => param.Item1 == "UNLOCK_ADD_NEW_CONTENT_TO_CF" || param.Item1.StartsWith("UNLOCK_DUNGEON")) && questParams.Any(param => param.Item1.StartsWith("LOC_ITEM")))
                         continue;
                     unlocks.Add(cfc);
