@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>net10.0-windows</TargetFramework>
-        <Version>15.750.0.0</Version>
+        <Version>15.755.2.0</Version>
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
