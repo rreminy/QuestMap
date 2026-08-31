@@ -48,6 +48,7 @@ namespace QuestMap {
         private bool _relayout;
         private bool _recenter;
         private Vector2 _offset = Vector2.Zero;
+        private float _zoom = 1.0f;
         private static readonly Vector2 TextOffset = new(5, 2);
         private const int GridSmall = 10;
         private const int GridLarge = 50;
@@ -704,11 +705,11 @@ namespace QuestMap {
 
         private Vector2 GetTopLeft(GeometryObject item) {
             // imgui measures from top left as 0,0
-            return ConvertPoint(item.BoundingBox.RightTop) + this._offset;
+            return ConvertPoint(item.BoundingBox.RightTop) * this._zoom + this._offset;
         }
 
         private Vector2 GetBottomRight(GeometryObject item) {
-            return ConvertPoint(item.BoundingBox.LeftBottom) + this._offset;
+            return ConvertPoint(item.BoundingBox.LeftBottom) * this._zoom + this._offset;
         }
 
         private void DrawGraph(GraphInfo info) {
@@ -726,8 +727,20 @@ namespace QuestMap {
             var canvasBottomRight = ImGui.GetItemRectMax();
 
             if (this._recenter && info.Centre is not null) {
-                this._offset = ConvertPoint(info.Centre.Center) * -1 + (canvasBottomRight - canvasTopLeft) / 2;
+                this._offset = ConvertPoint(info.Centre.Center) * -this._zoom + (canvasBottomRight - canvasTopLeft) / 2;
                 this._recenter = false;
+            }
+
+            // ========= ZOOM (mouse wheel, anchored on cursor) =========
+            var wheel = ImGui.GetIO().MouseWheel;
+            if (wheel != 0f && ImGui.IsItemHovered()) {
+                var mouse = ImGui.GetMousePos();
+                var oldZoom = this._zoom;
+                this._zoom = Math.Clamp(this._zoom + wheel * 0.05f, 0.01f, 1f);
+                // keep the graph-space point under the cursor pinned:
+                // screen = canvasBR - (graph * zoom + offset)  =>  graph = (canvasBR - mouse - offset) / zoom
+                var g = (canvasBottomRight - mouse - this._offset) / oldZoom;
+                this._offset = canvasBottomRight - mouse - g * this._zoom;
             }
 
             drawList.PushClipRect(canvasTopLeft, canvasBottomRight, true);
@@ -753,7 +766,7 @@ namespace QuestMap {
             drawList.AddRect(canvasTopLeft, canvasBottomRight, Colours.Bg2);
 
             Vector2 ConvertDrawPoint(Point p) {
-                var ret = canvasBottomRight - (ConvertPoint(p) + this._offset);
+                var ret = canvasBottomRight - (ConvertPoint(p) * this._zoom + this._offset);
                 return ret;
             }
 
@@ -834,8 +847,8 @@ namespace QuestMap {
             }
 
             bool IsHidden(GeometryObject node, Vector2 start) {
-                var width = (float) node.BoundingBox.Width;
-                var height = (float) node.BoundingBox.Height;
+                var width = (float) node.BoundingBox.Width * this._zoom;
+                var height = (float) node.BoundingBox.Height * this._zoom;
                 return start.X + width < canvasTopLeft.X
                        || start.Y + height < canvasTopLeft.Y
                        || start.X > canvasBottomRight.X
@@ -843,6 +856,11 @@ namespace QuestMap {
             }
 
             var drawn = new List<(Vector2, Vector2, uint)>();
+            string? hoveredName = null;
+            var mousePosNow = ImGui.GetMousePos();
+            var itemHovered = ImGui.IsItemHovered();
+            // fade text alpha over 0.95..1.0
+            var textAlphaScale = Math.Clamp((this._zoom - 0.95f) / 0.05f, 0f, 1f);
 
             foreach (var node in graph.Nodes) {
                 var start = canvasBottomRight - this.GetTopLeft(node);
@@ -878,7 +896,18 @@ namespace QuestMap {
                 }
 
                 drawList.AddRectFilled(start, end, ImGui.GetColorU32(colour), 5, ImDrawFlags.RoundCornersAll);
-                drawList.AddText(start + TextOffset, textColour, questNode.Name);
+                if (textAlphaScale > 0f) {
+                    var baseA = (textColour >> 24) & 0xFFu;
+                    var newA = (uint) (baseA * textAlphaScale) & 0xFFu;
+                    var fadedColour = (newA << 24) | (textColour & 0x00FFFFFFu);
+                    drawList.AddText(start + TextOffset, fadedColour, questNode.Name);
+                }
+
+                if (this._zoom < 1f && itemHovered && hoveredName is null
+                    && mousePosNow.X >= start.X && mousePosNow.X <= end.X
+                    && mousePosNow.Y >= start.Y && mousePosNow.Y <= end.Y) {
+                    hoveredName = questNode.Name;
+                }
             }
 
             // HOW ABOUT DRAGGING THE VIEW?
@@ -939,6 +968,13 @@ namespace QuestMap {
             }
 
             drawList.PopClipRect();
+
+            if (hoveredName is not null) {
+                ImGui.BeginTooltip();
+                ImGui.TextUnformatted(hoveredName);
+                ImGui.EndTooltip();
+            }
+
             ImGui.EndGroup();
             // ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 5);
         }
