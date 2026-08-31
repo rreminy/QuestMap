@@ -12,6 +12,7 @@ namespace QuestMap {
 
             this.Plugin.CommandManager.AddHandler("/quests", new CommandInfo(this.ShowGraphCommand) { HelpMessage = "Show Quest Map" });
             this.Plugin.CommandManager.AddHandler("/questinfo", new CommandInfo(this.ShowInfoCommand) { HelpMessage = "Show information for a specified quest by name or id" });
+            this.Plugin.CommandManager.AddHandler("/questgraph", new CommandInfo(this.ShowQuestGraphCommand) { HelpMessage = "Show graph for a specified quest by name or id" });
         }
 
         public void Dispose() {
@@ -57,6 +58,28 @@ namespace QuestMap {
                 {
                     var node = this.Plugin.Quests.AllNodes.Values.FirstOrDefault(node => node.Name.Equals(args, StringComparison.InvariantCultureIgnoreCase));
                     if (node is not null) this.Plugin.Ui.ShowInfo(node.Quest);
+                }
+            }
+        }
+
+        private void ShowQuestGraphCommand(string command, string args)
+        {
+            if (string.IsNullOrWhiteSpace(args))
+            {
+                this.Plugin.Chat.PrintError("/questgraph needs a quest name or id");
+            }
+            else
+            {
+                if (uint.TryParse(args, out var questId))
+                {
+                    if (questId < 65536)
+                        questId += 65536;
+                    this.Plugin.Ui.ShowQuest(questId);
+                }
+                else
+                {
+                    var node = this.Plugin.Quests.AllNodes.Values.FirstOrDefault(node => node.Name.Equals(args, StringComparison.InvariantCultureIgnoreCase));
+                    if (node is not null) this.Plugin.Ui.ShowQuest(node.Quest);
                 }
             }
         }
